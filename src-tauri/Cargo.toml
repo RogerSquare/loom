@@ -29,4 +29,8 @@ ulid = "1.2.1"
 futures = "0.3.32"
 reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream"] }
 async-stream = "0.3.6"
+time = { version = "0.3.47", features = ["formatting", "macros"] }
+
+[dev-dependencies]
+tempfile = "3.27.0"
 

@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod ollama;
+mod store;
 
 use commands::LoomState;
 
@@ -12,6 +13,13 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::ollama_chat,
             commands::ollama_list_models,
+            commands::session_list,
+            commands::session_open,
+            commands::session_create,
+            commands::session_save,
+            commands::session_delete,
+            commands::turn_append,
+            commands::branch_fork,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
