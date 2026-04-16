@@ -182,6 +182,24 @@ html,
   margin: 0;
   font-size: 1.2rem;
   font-weight: 500;
+  cursor: text;
+}
+
+.title-edit {
+  font-size: 1.2rem;
+  font-weight: 500;
+  background: var(--bg-2);
+  color: var(--fg);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-family: inherit;
+  width: 100%;
+  max-width: 500px;
+}
+
+.title-edit:focus {
+  outline: none;
 }
 
 .session-sub {

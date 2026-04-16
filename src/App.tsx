@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { BranchTabs } from "./components/BranchTabs";
 import { CommitGraph } from "./components/CommitGraph";
@@ -12,10 +12,19 @@ function App() {
   const refresh = useLoom((s) => s.refresh);
   const current = useLoom((s) => s.current);
   const modelsError = useLoom((s) => s.modelsError);
+  const renameSession = useLoom((s) => s.renameSession);
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
 
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const commitTitle = () => {
+    if (titleDraft != null && titleDraft.trim().length > 0) {
+      renameSession(titleDraft.trim());
+    }
+    setTitleDraft(null);
+  };
 
   return (
     <div className="app">
@@ -30,7 +39,26 @@ function App() {
           <>
             <header className="session-header">
               <div>
-                <h2>{current.session.title}</h2>
+                {titleDraft == null ? (
+                  <h2
+                    onDoubleClick={() => setTitleDraft(current.session.title)}
+                    title="double-click to rename"
+                  >
+                    {current.session.title}
+                  </h2>
+                ) : (
+                  <input
+                    className="title-edit"
+                    autoFocus
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={commitTitle}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitTitle();
+                      else if (e.key === "Escape") setTitleDraft(null);
+                    }}
+                  />
+                )}
                 <span className="session-sub">
                   {Object.keys(current.turns).length} turns ·{" "}
                   {Object.keys(current.branches).length} branches · created{" "}

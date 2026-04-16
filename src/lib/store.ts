@@ -10,6 +10,7 @@ import {
   sessionDelete,
   sessionList,
   sessionOpen,
+  sessionSave,
   turnAppend,
   type ChatOptions,
   type GeneratedBy,
@@ -54,6 +55,7 @@ interface LoomStore {
   ) => Promise<void>;
   checkoutBranch: (branchId: string) => Promise<void>;
   regenerateHead: (options: ChatOptions) => Promise<void>;
+  renameSession: (title: string) => Promise<void>;
 }
 
 export const useLoom = create<LoomStore>((set, get) => ({
@@ -140,6 +142,18 @@ export const useLoom = create<LoomStore>((set, get) => ({
     const { current } = get();
     if (!current) return;
     await streamAssistantReply(current, options, set, get);
+  },
+
+  async renameSession(title) {
+    const { current } = get();
+    if (!current) return;
+    const updated: SessionFile = {
+      ...current,
+      session: { ...current.session, title },
+    };
+    await sessionSave(updated);
+    set({ current: updated });
+    await get().refresh();
   },
 }));
 
