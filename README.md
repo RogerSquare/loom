@@ -145,4 +145,4 @@ npx tsc --noEmit
 
 ## License
 
-Unlicensed personal project. Fork, edit, run.
+MIT — see [LICENSE](./LICENSE).
