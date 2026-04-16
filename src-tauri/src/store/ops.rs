@@ -35,6 +35,7 @@ pub fn fork_from_edit(
         generated_by: None,
         annotations: vec!["edit".to_string()],
         swipe_group: None,
+        pinned: false,
     };
 
     let new_branch_id = BranchId::generate();
@@ -78,6 +79,26 @@ pub fn checkout(file: &mut SessionFile, branch_id: &BranchId) -> Result<(), Stri
     Ok(())
 }
 
+/// Toggle the pinned flag on a turn. Pin is metadata, not content, so this
+/// mutates the turn in place — the "always-fork" rule applies to content edits,
+/// not to metadata like pin state.
+pub fn set_pinned(
+    file: &mut SessionFile,
+    turn_id: &TurnId,
+    pinned: bool,
+) -> Result<(), String> {
+    let t = file
+        .turns
+        .get_mut(turn_id)
+        .ok_or_else(|| format!("turn {turn_id} not found"))?;
+    t.pinned = pinned;
+    Ok(())
+}
+
+pub fn set_context_limit(file: &mut SessionFile, limit: Option<u32>) {
+    file.session.context_limit = limit;
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -97,6 +118,7 @@ mod tests {
             generated_by: None,
             annotations: vec![],
             swipe_group: None,
+            pinned: false,
         }
     }
 
@@ -133,6 +155,7 @@ mod tests {
                 model: "llama3.1:8b".to_string(),
                 default_options: Options::default(),
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
+                context_limit: None,
             },
             turns,
             branches,
@@ -231,5 +254,39 @@ mod tests {
         let mut file = base_session();
         let err = checkout(&mut file, &BranchId::new("b_nope"));
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn set_pinned_toggles_flag_in_place() {
+        let mut file = base_session();
+        let original_content = file.turns.get(&TurnId::new("t2")).unwrap().content.clone();
+
+        set_pinned(&mut file, &TurnId::new("t2"), true).unwrap();
+        assert!(file.turns.get(&TurnId::new("t2")).unwrap().pinned);
+        assert_eq!(
+            file.turns.get(&TurnId::new("t2")).unwrap().content,
+            original_content,
+            "content must not change when pinning"
+        );
+
+        set_pinned(&mut file, &TurnId::new("t2"), false).unwrap();
+        assert!(!file.turns.get(&TurnId::new("t2")).unwrap().pinned);
+    }
+
+    #[test]
+    fn set_pinned_rejects_missing_turn() {
+        let mut file = base_session();
+        let err = set_pinned(&mut file, &TurnId::new("t_nope"), true);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn set_context_limit_updates_session() {
+        let mut file = base_session();
+        assert_eq!(file.session.context_limit, None);
+        set_context_limit(&mut file, Some(4));
+        assert_eq!(file.session.context_limit, Some(4));
+        set_context_limit(&mut file, None);
+        assert_eq!(file.session.context_limit, None);
     }
 }

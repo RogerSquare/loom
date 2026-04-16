@@ -3,7 +3,7 @@ import { create } from "zustand";
 import {
   branchCheckout,
   branchForkFromEdit,
-  buildTimeline,
+  buildContextMessages,
   listModels,
   ollamaChat,
   sessionCreate,
@@ -11,7 +11,9 @@ import {
   sessionList,
   sessionOpen,
   sessionSave,
+  sessionSetContextLimit,
   turnAppend,
+  turnPin,
   type ChatOptions,
   type GeneratedBy,
   type Message,
@@ -56,6 +58,8 @@ interface LoomStore {
   checkoutBranch: (branchId: string) => Promise<void>;
   regenerateHead: (options: ChatOptions) => Promise<void>;
   renameSession: (title: string) => Promise<void>;
+  pinTurn: (turnId: string, pinned: boolean) => Promise<void>;
+  setContextLimit: (limit: number | null) => Promise<void>;
 }
 
 export const useLoom = create<LoomStore>((set, get) => ({
@@ -155,6 +159,20 @@ export const useLoom = create<LoomStore>((set, get) => ({
     set({ current: updated });
     await get().refresh();
   },
+
+  async pinTurn(turnId, pinned) {
+    const { current } = get();
+    if (!current) return;
+    const updated = await turnPin(current.session.id, turnId, pinned);
+    set({ current: updated });
+  },
+
+  async setContextLimit(limit) {
+    const { current } = get();
+    if (!current) return;
+    const updated = await sessionSetContextLimit(current.session.id, limit);
+    set({ current: updated });
+  },
 }));
 
 // ───────────────────────────── internals ─────────────────────────────
@@ -180,8 +198,8 @@ async function streamAssistantReply(
   });
 
   try {
-    const timeline = buildTimeline(file);
-    const messages: Message[] = timeline.map((t) => ({
+    const { included } = buildContextMessages(file);
+    const messages: Message[] = included.map((t) => ({
       role: t.role,
       content: t.content,
     }));

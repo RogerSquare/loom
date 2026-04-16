@@ -120,6 +120,7 @@ mod tests {
             generated_by: None,
             annotations: vec!["note".to_string()],
             swipe_group: None,
+            pinned: false,
         };
         let mut turns = BTreeMap::new();
         turns.insert(TurnId::new("t1"), turn);
@@ -143,6 +144,7 @@ mod tests {
                 model: "llama3.1:8b".to_string(),
                 default_options: Options::default(),
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
+                context_limit: None,
             },
             turns,
             branches,
@@ -211,6 +213,42 @@ mod tests {
         assert!(!tmp.exists(), "tmp should be consumed by successful write");
         let loaded = load_session(dir.path(), &v2.session.id).unwrap();
         assert_eq!(loaded.session.title, "post-crash");
+    }
+
+    #[test]
+    fn loads_v1_file_without_new_fields_and_applies_defaults() {
+        // An older file saved before feat-loom-004 — no `pinned` on turns,
+        // no `context_limit` on session. Must load cleanly with defaults.
+        let legacy = r#"{
+            "loom_schema": 1,
+            "session": {
+                "id": "sess_legacy",
+                "title": "old",
+                "created_at": "2026-04-15T12:00:00Z",
+                "model": "llama3.1:8b",
+                "default_endpoint": "http://localhost:11434/api/chat"
+            },
+            "turns": {
+                "t1": {
+                    "id": "t1",
+                    "parent": null,
+                    "role": "system",
+                    "content": "You are helpful.",
+                    "created_at": "2026-04-15T12:00:00Z"
+                }
+            },
+            "branches": {
+                "b_main": {
+                    "name": "main",
+                    "head": "t1",
+                    "created_at": "2026-04-15T12:00:00Z"
+                }
+            },
+            "head_branch": "b_main"
+        }"#;
+        let file: SessionFile = serde_json::from_str(legacy).unwrap();
+        assert_eq!(file.session.context_limit, None);
+        assert!(!file.turns.get(&TurnId::new("t1")).unwrap().pinned);
     }
 
     #[test]

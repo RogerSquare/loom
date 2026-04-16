@@ -155,6 +155,7 @@ pub async fn session_create(
         generated_by: None,
         annotations: vec![],
         swipe_group: None,
+        pinned: false,
     };
 
     let main_branch = Branch {
@@ -174,6 +175,7 @@ pub async fn session_create(
             model,
             default_options: Default::default(),
             default_endpoint: "http://localhost:11434/api/chat".to_string(),
+            context_limit: None,
         },
         turns: Default::default(),
         branches: Default::default(),
@@ -216,6 +218,7 @@ pub async fn turn_append(
         generated_by,
         annotations: vec![],
         swipe_group: None,
+        pinned: false,
     };
     let new_turn_id = new_turn.id.clone();
     file.turns.insert(new_turn_id.clone(), new_turn);
@@ -281,6 +284,33 @@ pub async fn branch_checkout(
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
     store_ops::checkout(&mut file, &branch_id).map_err(LoomError::Ollama)?;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn turn_pin(
+    app: AppHandle,
+    session_id: SessionId,
+    turn_id: TurnId,
+    pinned: bool,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    store_ops::set_pinned(&mut file, &turn_id, pinned).map_err(LoomError::Ollama)?;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn session_set_context_limit(
+    app: AppHandle,
+    session_id: SessionId,
+    limit: Option<u32>,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    store_ops::set_context_limit(&mut file, limit);
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
 }

@@ -80,6 +80,7 @@ export interface Turn {
   generated_by?: GeneratedBy;
   annotations?: string[];
   swipe_group?: string;
+  pinned?: boolean;
 }
 
 export interface Branch {
@@ -97,6 +98,7 @@ export interface Session {
   model: string;
   default_options: ChatOptions;
   default_endpoint: string;
+  context_limit?: number;
 }
 
 export interface SessionFile {
@@ -191,6 +193,19 @@ export const branchCheckout = (
 ): Promise<SessionFile> =>
   invoke("branch_checkout", { sessionId: session_id, branchId: branch_id });
 
+export const turnPin = (
+  session_id: string,
+  turn_id: string,
+  pinned: boolean,
+): Promise<SessionFile> =>
+  invoke("turn_pin", { sessionId: session_id, turnId: turn_id, pinned });
+
+export const sessionSetContextLimit = (
+  session_id: string,
+  limit: number | null,
+): Promise<SessionFile> =>
+  invoke("session_set_context_limit", { sessionId: session_id, limit });
+
 // ───────────────────────────── Helpers ─────────────────────────────
 
 /** Turns with the same parent as `turnId`, excluding the turn itself. */
@@ -201,6 +216,56 @@ export function findSiblings(file: SessionFile, turnId: string): Turn[] {
   return Object.values(file.turns).filter(
     (u) => u.id !== turnId && u.parent === parent,
   );
+}
+
+/**
+ * Compute the outbound Ollama `messages` chain after applying the session's
+ * context_limit and per-turn pin state.
+ *
+ * Rules:
+ * - Root system turn is always included (does not count toward the limit).
+ * - Pinned turns are always included (do not count toward the limit).
+ * - Of the remaining (non-root, non-pinned) turns, keep the most recent N
+ *   such that N <= context_limit.
+ * - If context_limit is null/undefined, everything is included — same behavior
+ *   as raw `buildTimeline`.
+ *
+ * Returns the kept turns (in chain order) and a Set of excluded turn IDs so
+ * the UI can dim them without re-computing.
+ */
+export function buildContextMessages(
+  file: SessionFile,
+  branchId?: string,
+): { included: Turn[]; excluded: Set<string> } {
+  const chain = buildTimeline(file, branchId);
+  const limit = file.session.context_limit;
+  if (limit == null) {
+    return { included: chain, excluded: new Set() };
+  }
+  if (chain.length === 0) {
+    return { included: [], excluded: new Set() };
+  }
+
+  const root = chain[0];
+  const rest = chain.slice(1);
+  const pinnedFromRest = rest.filter((t) => t.pinned);
+  const unpinnedFromRest = rest.filter((t) => !t.pinned);
+
+  const keptUnpinned =
+    limit >= unpinnedFromRest.length
+      ? unpinnedFromRest
+      : unpinnedFromRest.slice(unpinnedFromRest.length - limit);
+
+  const keptIds = new Set<string>();
+  keptIds.add(root.id);
+  pinnedFromRest.forEach((t) => keptIds.add(t.id));
+  keptUnpinned.forEach((t) => keptIds.add(t.id));
+
+  const included = chain.filter((t) => keptIds.has(t.id));
+  const excluded = new Set<string>(
+    chain.filter((t) => !keptIds.has(t.id)).map((t) => t.id),
+  );
+  return { included, excluded };
 }
 
 /** Build a linear chain (root → head) for the current branch. */

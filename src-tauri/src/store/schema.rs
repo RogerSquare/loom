@@ -47,6 +47,11 @@ pub struct Session {
     #[serde(default)]
     pub default_options: Options,
     pub default_endpoint: String,
+    /// Rolling turn-count limit applied to outbound chat requests.
+    /// None = unlimited (legacy behavior). Pinned turns + the root system
+    /// turn are always included regardless of this value.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_limit: Option<u32>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -88,6 +93,12 @@ pub struct Turn {
     pub annotations: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub swipe_group: Option<String>,
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub pinned: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

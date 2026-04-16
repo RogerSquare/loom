@@ -23,6 +23,8 @@ pub fn run() {
             commands::branch_fork,
             commands::branch_fork_from_edit,
             commands::branch_checkout,
+            commands::turn_pin,
+            commands::session_set_context_limit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

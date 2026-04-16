@@ -6,6 +6,8 @@ import { useLoom } from "../lib/store";
 interface Props {
   turn: Turn;
   streaming?: boolean;
+  excluded?: boolean;
+  isRoot?: boolean;
   onEdit?: (turn: Turn) => void;
   onCompare?: (left: Turn, right: Turn) => void;
 }
@@ -17,8 +19,16 @@ const ROLE_LABEL: Record<Turn["role"], string> = {
   tool: "tool",
 };
 
-export function TurnCard({ turn, streaming, onEdit, onCompare }: Props) {
+export function TurnCard({
+  turn,
+  streaming,
+  excluded,
+  isRoot,
+  onEdit,
+  onCompare,
+}: Props) {
   const current = useLoom((s) => s.current);
+  const pinTurn = useLoom((s) => s.pinTurn);
   const [compareOpen, setCompareOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,6 +37,7 @@ export function TurnCard({ turn, streaming, onEdit, onCompare }: Props) {
   const reply = meta?.eval_count;
   const total = meta?.total_duration_ns;
   const isEdit = turn.annotations?.includes("edit");
+  const pinned = !!turn.pinned;
 
   const siblings = current ? findSiblings(current, turn.id) : [];
 
@@ -39,14 +50,42 @@ export function TurnCard({ turn, streaming, onEdit, onCompare }: Props) {
     return () => window.removeEventListener("click", handler);
   }, [compareOpen]);
 
+  const togglePin = () => {
+    pinTurn(turn.id, !pinned);
+  };
+
   return (
-    <div className={`turn turn-${turn.role}${streaming ? " streaming" : ""}`}>
+    <div
+      className={
+        `turn turn-${turn.role}` +
+        (streaming ? " streaming" : "") +
+        (excluded ? " excluded" : "") +
+        (pinned ? " pinned" : "")
+      }
+    >
       <div className="turn-header">
         <span className="role">
           {ROLE_LABEL[turn.role]}
           {isEdit && <span className="edit-badge">edited</span>}
+          {excluded && (
+            <span
+              className="excluded-badge"
+              title="Omitted from outbound context. Lower the context_limit or pin this turn to include it."
+            >
+              excluded
+            </span>
+          )}
         </span>
         <div className="turn-header-right">
+          {!streaming && !isRoot && (
+            <button
+              className={pinned ? "pin-button pinned" : "pin-button"}
+              onClick={togglePin}
+              title={pinned ? "unpin (allow rolling out of context)" : "pin (always include in context)"}
+            >
+              {pinned ? "📌" : "📍"}
+            </button>
+          )}
           <span className="timestamp">
             {new Date(turn.created_at).toLocaleTimeString()}
           </span>

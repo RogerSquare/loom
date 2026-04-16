@@ -15,16 +15,23 @@ export function SessionSidebar() {
   const [newTitle, setNewTitle] = useState("");
   const [newModel, setNewModel] = useState("");
   const [newSystem, setNewSystem] = useState("You are a helpful assistant.");
+  const [newLimit, setNewLimit] = useState<string>("");
+  const setContextLimit = useLoom((s) => s.setContextLimit);
 
   const beginCreate = () => {
     setNewTitle("untitled");
     setNewModel(models[0]?.name ?? "");
+    setNewLimit("");
     setCreating(true);
   };
 
   const confirmCreate = async () => {
     if (!newModel) return;
     await createSession(newTitle || "untitled", newModel, newSystem);
+    const parsed = newLimit.trim() === "" ? null : Number(newLimit);
+    if (parsed != null && Number.isFinite(parsed) && parsed > 0) {
+      await setContextLimit(Math.floor(parsed));
+    }
     setCreating(false);
   };
 
@@ -69,6 +76,16 @@ export function SessionSidebar() {
               value={newSystem}
               onChange={(e) => setNewSystem(e.target.value)}
               rows={3}
+            />
+          </label>
+          <label className="field">
+            <span>Context limit (turns, blank = unlimited)</span>
+            <input
+              type="number"
+              min={1}
+              value={newLimit}
+              onChange={(e) => setNewLimit(e.target.value)}
+              placeholder="e.g. 10"
             />
           </label>
           <div className="row">

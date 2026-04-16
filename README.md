@@ -20,6 +20,8 @@ Local-only desktop test harness for experimenting with LLM context-window editin
 - **Sampling knobs** (temperature, top_p, num_ctx, seed) per-send.
 - **Atomic JSON storage** (temp-write + fsync + rename; `.bak` rotated on every save).
 - **Remembers window geometry** across restarts.
+- **Rolling context window.** Set a per-session turn limit; the oldest non-pinned turns drop out of the outbound request. Excluded turns stay visible in the timeline (dimmed, badged) so you can change the limit or pin one and they re-enter context.
+- **Pin turns.** Click the pin icon on any turn to keep it in the outbound context regardless of the limit. The root system turn is always included by policy.
 
 Phase-7+ features (prefill via `/api/generate` + `raw:true`, raw-JSON request editor, swipes, system-prompt library, multimodal) are planned but not in v0.1.0.
 
@@ -118,6 +120,13 @@ All fields except `id`, `parent`, `role`, `content`, `created_at` are optional a
 - **Ctrl+Enter** in the composer — send.
 - **Double-click** the session title — rename.
 - **Esc** inside any modal — cancel.
+
+## Context window
+
+- On session create, optionally set a **context limit** (turn count). Leave blank for unlimited.
+- Change it later by clicking the `ctx: …` value in the session header.
+- Click the pin icon on any turn to exempt it from rolling out.
+- The root system turn is always in context even if unpinned — it anchors the whole conversation.
 
 ## Layout
 

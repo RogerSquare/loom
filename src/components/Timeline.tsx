@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { buildTimeline, type Turn } from "../lib/ipc";
+import { buildContextMessages, buildTimeline, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 import { DiffPane } from "./DiffPane";
 import { EditPanel } from "./EditPanel";
@@ -17,10 +17,13 @@ export function Timeline() {
     null,
   );
 
-  const timeline = useMemo(
-    () => (current ? buildTimeline(current) : []),
-    [current],
-  );
+  const { timeline, excluded, rootId } = useMemo(() => {
+    if (!current)
+      return { timeline: [] as Turn[], excluded: new Set<string>(), rootId: "" };
+    const chain = buildTimeline(current);
+    const { excluded } = buildContextMessages(current);
+    return { timeline: chain, excluded, rootId: chain[0]?.id ?? "" };
+  }, [current]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -45,6 +48,8 @@ export function Timeline() {
           <TurnCard
             key={t.id}
             turn={t}
+            excluded={excluded.has(t.id)}
+            isRoot={t.id === rootId}
             onEdit={setEditing}
             onCompare={(left, right) => setComparing({ left, right })}
           />

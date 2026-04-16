@@ -13,7 +13,9 @@ function App() {
   const current = useLoom((s) => s.current);
   const modelsError = useLoom((s) => s.modelsError);
   const renameSession = useLoom((s) => s.renameSession);
+  const setContextLimit = useLoom((s) => s.setContextLimit);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
+  const [limitDraft, setLimitDraft] = useState<string | null>(null);
 
   useEffect(() => {
     refresh();
@@ -24,6 +26,20 @@ function App() {
       renameSession(titleDraft.trim());
     }
     setTitleDraft(null);
+  };
+
+  const commitLimit = () => {
+    if (limitDraft == null) return;
+    const trimmed = limitDraft.trim();
+    if (trimmed === "") {
+      setContextLimit(null);
+    } else {
+      const n = Number(trimmed);
+      if (Number.isFinite(n) && n > 0) {
+        setContextLimit(Math.floor(n));
+      }
+    }
+    setLimitDraft(null);
   };
 
   return (
@@ -61,7 +77,36 @@ function App() {
                 )}
                 <span className="session-sub">
                   {Object.keys(current.turns).length} turns ·{" "}
-                  {Object.keys(current.branches).length} branches · created{" "}
+                  {Object.keys(current.branches).length} branches · ctx:{" "}
+                  {limitDraft == null ? (
+                    <button
+                      className="inline-edit"
+                      onClick={() =>
+                        setLimitDraft(
+                          current.session.context_limit?.toString() ?? "",
+                        )
+                      }
+                      title="click to change context limit"
+                    >
+                      {current.session.context_limit ?? "unlimited"}
+                    </button>
+                  ) : (
+                    <input
+                      className="inline-edit-input"
+                      autoFocus
+                      type="number"
+                      min={1}
+                      placeholder="unlimited"
+                      value={limitDraft}
+                      onChange={(e) => setLimitDraft(e.target.value)}
+                      onBlur={commitLimit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitLimit();
+                        else if (e.key === "Escape") setLimitDraft(null);
+                      }}
+                    />
+                  )}
+                  {" · "}created{" "}
                   {new Date(current.session.created_at).toLocaleString()}
                 </span>
               </div>

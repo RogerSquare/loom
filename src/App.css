@@ -202,6 +202,85 @@ html,
   outline: none;
 }
 
+.inline-edit {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--dim);
+  color: var(--fg);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 0 4px;
+  margin: 0 2px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.inline-edit:hover {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.inline-edit-input {
+  width: 60px;
+  background: var(--bg-2);
+  color: var(--fg);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 4px;
+  margin: 0 2px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+}
+
+.inline-edit-input:focus {
+  outline: none;
+}
+
+/* ─── Pinned / excluded turn states ───────────────────────────── */
+
+.pin-button {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  padding: 0 4px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  border-radius: 2px;
+}
+
+.turn:hover .pin-button,
+.pin-button.pinned {
+  opacity: 1;
+}
+
+.pin-button.pinned {
+  color: var(--accent);
+}
+
+.turn.pinned {
+  box-shadow: -3px 0 0 var(--accent);
+}
+
+.turn.excluded {
+  opacity: 0.45;
+}
+
+.turn.excluded.pinned {
+  opacity: 1;
+}
+
+.excluded-badge {
+  margin-left: 0.5rem;
+  padding: 1px 6px;
+  background: #3a2a1a;
+  color: #d8a868;
+  font-size: 0.6rem;
+  border-radius: 2px;
+  letter-spacing: 0;
+}
+
 .session-sub {
   color: var(--muted);
   font-size: 0.75rem;

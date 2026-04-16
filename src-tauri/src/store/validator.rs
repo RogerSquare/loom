@@ -104,6 +104,7 @@ mod tests {
             generated_by: None,
             annotations: vec![],
             swipe_group: None,
+            pinned: false,
         }
     }
 
@@ -138,6 +139,7 @@ mod tests {
                 model: "llama3.1:8b".to_string(),
                 default_options: Options::default(),
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
+                context_limit: None,
             },
             turns,
             branches,
