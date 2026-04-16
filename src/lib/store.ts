@@ -1,6 +1,8 @@
 import { create } from "zustand";
 
 import {
+  branchCheckout,
+  branchForkFromEdit,
   buildTimeline,
   listModels,
   ollamaChat,
@@ -45,6 +47,13 @@ interface LoomStore {
   ) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   sendMessage: (content: string, options: ChatOptions) => Promise<void>;
+  forkFromEdit: (
+    turnId: string,
+    newContent: string,
+    opts: { regenerate: boolean; options?: ChatOptions },
+  ) => Promise<void>;
+  checkoutBranch: (branchId: string) => Promise<void>;
+  regenerateHead: (options: ChatOptions) => Promise<void>;
 }
 
 export const useLoom = create<LoomStore>((set, get) => ({
@@ -95,76 +104,122 @@ export const useLoom = create<LoomStore>((set, get) => ({
     if (!current) return;
     if (!content.trim()) return;
 
-    set({ streaming: true, streamingContent: "", streamingStartedAt: Date.now(), sendError: null });
+    const afterUser = await turnAppend(
+      current.session.id,
+      current.head_branch,
+      "user",
+      content,
+    );
+    set({ current: afterUser });
+    await streamAssistantReply(afterUser, options, set, get);
+  },
 
+  async forkFromEdit(turnId, newContent, opts) {
+    const { current } = get();
+    if (!current) return;
     try {
-      // 1. Persist the user turn first.
-      const afterUser = await turnAppend(
-        current.session.id,
-        current.head_branch,
-        "user",
-        content,
-      );
-      set({ current: afterUser });
-
-      // 2. Build the message chain to send to Ollama.
-      const timeline = buildTimeline(afterUser);
-      const messages: Message[] = timeline.map((t) => ({
-        role: t.role,
-        content: t.content,
-      }));
-
-      // 3. Stream assistant reply; accumulate into `streamingContent`.
-      let assistantText = "";
-      let responseMeta: GeneratedBy["response_meta"] = {};
-
-      await ollamaChat(
-        {
-          model: afterUser.session.model,
-          messages,
-          stream: true,
-          options,
-        },
-        (ev) => {
-          if (ev.kind === "delta") {
-            assistantText += ev.content;
-            set({ streamingContent: assistantText });
-          } else if (ev.kind === "done") {
-            responseMeta = {
-              prompt_eval_count: ev.prompt_eval_count ?? undefined,
-              eval_count: ev.eval_count ?? undefined,
-              prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
-              eval_duration_ns: ev.eval_duration_ns ?? undefined,
-              total_duration_ns: ev.total_duration_ns ?? undefined,
-            };
-          } else if (ev.kind === "error") {
-            set({ sendError: { message: ev.message } });
-          }
-        },
-      );
-
-      // 4. Persist assistant turn.
-      const generated_by: GeneratedBy = {
-        endpoint: afterUser.session.default_endpoint,
-        model: afterUser.session.model,
-        options,
-        request_body: { model: afterUser.session.model, messages, options },
-        response_meta: responseMeta,
-      };
-      const afterAsst = await turnAppend(
-        afterUser.session.id,
-        afterUser.head_branch,
-        "assistant",
-        assistantText,
-        generated_by,
-      );
-      set({ current: afterAsst });
+      const afterFork = await branchForkFromEdit(current.session.id, turnId, newContent);
+      set({ current: afterFork, sendError: null });
+      await get().refresh();
+      if (opts.regenerate) {
+        await streamAssistantReply(afterFork, opts.options ?? {}, set, get);
+      }
     } catch (e) {
       set({ sendError: { message: String(e) } });
-    } finally {
-      set({ streaming: false, streamingContent: "", streamingStartedAt: null });
-      await get().refresh();
     }
   },
+
+  async checkoutBranch(branchId) {
+    const { current } = get();
+    if (!current) return;
+    const after = await branchCheckout(current.session.id, branchId);
+    set({ current: after });
+  },
+
+  async regenerateHead(options) {
+    const { current } = get();
+    if (!current) return;
+    await streamAssistantReply(current, options, set, get);
+  },
 }));
+
+// ───────────────────────────── internals ─────────────────────────────
+
+type Setter = (
+  s:
+    | Partial<LoomStore>
+    | ((s: LoomStore) => Partial<LoomStore> | LoomStore),
+) => void;
+type Getter = () => LoomStore;
+
+async function streamAssistantReply(
+  file: SessionFile,
+  options: ChatOptions,
+  set: Setter,
+  get: Getter,
+): Promise<void> {
+  set({
+    streaming: true,
+    streamingContent: "",
+    streamingStartedAt: Date.now(),
+    sendError: null,
+  });
+
+  try {
+    const timeline = buildTimeline(file);
+    const messages: Message[] = timeline.map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
+
+    let assistantText = "";
+    let responseMeta: GeneratedBy["response_meta"] = {};
+
+    await ollamaChat(
+      {
+        model: file.session.model,
+        messages,
+        stream: true,
+        options,
+      },
+      (ev) => {
+        if (ev.kind === "delta") {
+          assistantText += ev.content;
+          set({ streamingContent: assistantText });
+        } else if (ev.kind === "done") {
+          responseMeta = {
+            prompt_eval_count: ev.prompt_eval_count ?? undefined,
+            eval_count: ev.eval_count ?? undefined,
+            prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
+            eval_duration_ns: ev.eval_duration_ns ?? undefined,
+            total_duration_ns: ev.total_duration_ns ?? undefined,
+          };
+        } else if (ev.kind === "error") {
+          set({ sendError: { message: ev.message } });
+        }
+      },
+    );
+
+    const generated_by: GeneratedBy = {
+      endpoint: file.session.default_endpoint,
+      model: file.session.model,
+      options,
+      request_body: { model: file.session.model, messages, options },
+      response_meta: responseMeta,
+    };
+    const afterAsst = await turnAppend(
+      file.session.id,
+      file.head_branch,
+      "assistant",
+      assistantText,
+      generated_by,
+    );
+    set({ current: afterAsst });
+  } catch (e) {
+    set({ sendError: { message: String(e) } });
+  } finally {
+    set({ streaming: false, streamingContent: "", streamingStartedAt: null });
+    await get().refresh();
+  }
+}
 

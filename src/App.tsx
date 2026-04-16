@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 
+import { BranchTabs } from "./components/BranchTabs";
+import { CommitGraph } from "./components/CommitGraph";
 import { Composer } from "./components/Composer";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { Timeline } from "./components/Timeline";
@@ -27,14 +29,20 @@ function App() {
         {current ? (
           <>
             <header className="session-header">
-              <h2>{current.session.title}</h2>
-              <span className="session-sub">
-                {Object.keys(current.turns).length} turns ·{" "}
-                {Object.keys(current.branches).length} branches · created{" "}
-                {new Date(current.session.created_at).toLocaleString()}
-              </span>
+              <div>
+                <h2>{current.session.title}</h2>
+                <span className="session-sub">
+                  {Object.keys(current.turns).length} turns ·{" "}
+                  {Object.keys(current.branches).length} branches · created{" "}
+                  {new Date(current.session.created_at).toLocaleString()}
+                </span>
+              </div>
             </header>
-            <Timeline />
+            <BranchTabs />
+            <div className="session-body">
+              <Timeline />
+              <CommitGraph />
+            </div>
             <Composer />
           </>
         ) : (

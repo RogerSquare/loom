@@ -174,6 +174,23 @@ export const branchFork = (
 ): Promise<SessionFile> =>
   invoke("branch_fork", { sessionId: session_id, fromTurn: from_turn, name });
 
+export const branchForkFromEdit = (
+  session_id: string,
+  edited_turn_id: string,
+  new_content: string,
+): Promise<SessionFile> =>
+  invoke("branch_fork_from_edit", {
+    sessionId: session_id,
+    editedTurnId: edited_turn_id,
+    newContent: new_content,
+  });
+
+export const branchCheckout = (
+  session_id: string,
+  branch_id: string,
+): Promise<SessionFile> =>
+  invoke("branch_checkout", { sessionId: session_id, branchId: branch_id });
+
 // ───────────────────────────── Helpers ─────────────────────────────
 
 /** Build a linear chain (root → head) for the current branch. */

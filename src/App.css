@@ -208,6 +208,54 @@ html,
   border-radius: 3px;
 }
 
+/* ─── Branch tabs ─────────────────────────────────────────────── */
+
+.branch-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0.4rem 1rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.branch-tab {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.branch-tab:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+
+.branch-tab.active {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+.branch-marker {
+  color: var(--accent);
+  margin-right: 5px;
+  font-size: 0.7rem;
+}
+
+/* ─── Session body (timeline + graph) ─────────────────────────── */
+
+.session-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  overflow: hidden;
+}
+
 /* ─── Timeline ────────────────────────────────────────────────── */
 
 .timeline {
@@ -293,6 +341,179 @@ html,
   background: #2a1a1a;
   border-left: 2px solid #c44;
   border-radius: 2px;
+}
+
+.edit-badge {
+  margin-left: 0.5rem;
+  padding: 1px 6px;
+  background: var(--bg-3);
+  color: var(--accent);
+  font-size: 0.6rem;
+  border-radius: 2px;
+  letter-spacing: 0;
+}
+
+.turn-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.turn:hover .edit-button {
+  opacity: 1;
+}
+
+.edit-button:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+/* ─── Commit graph ─────────────────────────────────────────────── */
+
+.commit-graph {
+  border-left: 1px solid var(--border);
+  background: var(--bg-1);
+  padding: 1rem 0.5rem;
+  overflow: auto;
+  min-width: 60px;
+  max-width: 260px;
+}
+
+.commit-graph-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  padding: 0 0.5rem;
+}
+
+.commit-graph-svg .edge {
+  stroke: var(--border);
+  stroke-width: 1.2;
+}
+
+.commit-graph-svg .node circle {
+  fill: var(--bg-3);
+  stroke: var(--border);
+}
+
+.commit-graph-svg .node-system circle {
+  fill: #555;
+  stroke: #777;
+}
+
+.commit-graph-svg .node-user circle {
+  fill: #4a6a8a;
+  stroke: #6a8aaa;
+}
+
+.commit-graph-svg .node-assistant circle {
+  fill: #3a6a5a;
+  stroke: #5a8a7a;
+}
+
+.commit-graph-svg .node-tool circle {
+  fill: #8a6a4a;
+  stroke: #aa8a6a;
+}
+
+.commit-graph-svg .node.clickable {
+  cursor: pointer;
+}
+
+.commit-graph-svg .node.clickable:hover circle {
+  stroke: var(--accent);
+}
+
+/* ─── Edit panel modal ─────────────────────────────────────────── */
+
+.edit-panel-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.edit-panel {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: min(800px, 90vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.edit-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.edit-panel header strong {
+  color: var(--fg);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.edit-editor {
+  flex: 1;
+  overflow: auto;
+  padding: 0.5rem 1rem;
+  background: var(--bg-2);
+}
+
+.edit-panel footer {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.regen-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.regen-toggle input {
+  margin: 0;
+}
+
+button.primary {
+  border-color: var(--accent);
+  background: #2a4a6a;
+  color: var(--fg);
+}
+
+button.primary:hover:not(:disabled) {
+  background: #3a5a7a;
 }
 
 /* ─── Composer ────────────────────────────────────────────────── */

@@ -14,6 +14,7 @@ use crate::ollama::{
 };
 use crate::store::{
     io as store_io,
+    ops as store_ops,
     schema::{
         Branch, BranchId, Session, SessionFile, SessionId, SessionSummary, Turn, TurnId,
         LOOM_SCHEMA_V1,
@@ -225,7 +226,6 @@ pub async fn turn_append(
 }
 
 /// Phase-2 branch fork: create a new branch starting from an existing turn.
-/// (Phase 4 adds `branch_fork_from_edit` which does the fork-and-rewrite.)
 #[tauri::command]
 pub async fn branch_fork(
     app: AppHandle,
@@ -250,6 +250,37 @@ pub async fn branch_fork(
     };
     file.branches.insert(BranchId::generate(), new_branch);
 
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+/// Phase-4 edit-and-fork. Creates a sibling turn (same parent, same role, new
+/// content) + new branch pointing at it, switches head_branch to the new
+/// branch. Original turn is not touched.
+#[tauri::command]
+pub async fn branch_fork_from_edit(
+    app: AppHandle,
+    session_id: SessionId,
+    edited_turn_id: TurnId,
+    new_content: String,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    store_ops::fork_from_edit(&mut file, &edited_turn_id, new_content, now_iso())
+        .map_err(LoomError::Ollama)?;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn branch_checkout(
+    app: AppHandle,
+    session_id: SessionId,
+    branch_id: BranchId,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    store_ops::checkout(&mut file, &branch_id).map_err(LoomError::Ollama)?;
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
 }

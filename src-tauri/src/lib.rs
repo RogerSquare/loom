@@ -20,6 +20,8 @@ pub fn run() {
             commands::session_delete,
             commands::turn_append,
             commands::branch_fork,
+            commands::branch_fork_from_edit,
+            commands::branch_checkout,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
