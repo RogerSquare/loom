@@ -176,6 +176,27 @@ html,
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--border);
   background: var(--bg-1);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-action {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.header-action:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
 }
 
 .session-header h2 {
@@ -559,6 +580,80 @@ html,
 .sweep-run.sweep-pending .sweep-run-body,
 .sweep-run.sweep-streaming .sweep-run-body {
   color: var(--muted);
+}
+
+/* ─── Garak modal ───────────────────────────────────────────────── */
+
+.garak-panel {
+  width: min(960px, 92vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.garak-launcher {
+  padding: 1rem 1.2rem;
+  background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.garak-launcher code {
+  background: #0008;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.garak-log {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  background: #000;
+  color: #ccc;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 60vh;
+}
+
+.garak-out {
+  color: #ccc;
+}
+
+.garak-err {
+  color: #e8a868;
+}
+
+.garak-cursor {
+  color: var(--accent);
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.garak-report {
+  padding: 0.6rem 1rem;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.garak-report code {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  background: #0008;
+  padding: 2px 6px;
+  border-radius: 3px;
+  word-break: break-all;
 }
 
 .turn-footer {

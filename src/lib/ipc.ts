@@ -226,6 +226,28 @@ export const sessionSetContextLimit = (
 ): Promise<SessionFile> =>
   invoke("session_set_context_limit", { sessionId: session_id, limit });
 
+export type GarakEvent =
+  | { kind: "stdout"; line: string }
+  | { kind: "stderr"; line: string }
+  | { kind: "done"; exit_code: number; report_path: string | null }
+  | { kind: "error"; message: string };
+
+export async function garakScan(
+  model: string,
+  probes: string | null,
+  generations: number | null,
+  onEvent: (ev: GarakEvent) => void,
+): Promise<void> {
+  const channel = new Channel<GarakEvent>();
+  channel.onmessage = onEvent;
+  await invoke("garak_scan", {
+    model,
+    probes,
+    generations,
+    onEvent: channel,
+  });
+}
+
 // ───────────────────────────── Helpers ─────────────────────────────
 
 /** Turns with the same parent as `turnId`, excluding the turn itself. */

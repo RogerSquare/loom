@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BranchTabs } from "./components/BranchTabs";
 import { CommitGraph } from "./components/CommitGraph";
 import { Composer } from "./components/Composer";
+import { GarakModal } from "./components/GarakModal";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { Timeline } from "./components/Timeline";
 import { useLoom } from "./lib/store";
@@ -16,6 +17,7 @@ function App() {
   const setContextLimit = useLoom((s) => s.setContextLimit);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
+  const [garakOpen, setGarakOpen] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -110,6 +112,13 @@ function App() {
                   {new Date(current.session.created_at).toLocaleString()}
                 </span>
               </div>
+              <button
+                className="header-action"
+                onClick={() => setGarakOpen(true)}
+                title="run garak red-team probes against the active model"
+              >
+                🛡 scan
+              </button>
             </header>
             <BranchTabs />
             <div className="session-body">
@@ -125,6 +134,7 @@ function App() {
           </div>
         )}
       </main>
+      {garakOpen && <GarakModal onClose={() => setGarakOpen(false)} />}
     </div>
   );
 }

@@ -1,10 +1,13 @@
 use std::path::PathBuf;
+use std::process::Stdio;
 
 use futures::StreamExt;
+use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::error::{LoomError, Result};
 use crate::ollama::{
@@ -328,4 +331,155 @@ pub async fn session_set_context_limit(
     store_ops::set_context_limit(&mut file, limit);
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
+}
+
+// ────────────────────────────── Garak scan ───────────────────────────────
+
+#[derive(Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum GarakEvent {
+    Stdout { line: String },
+    Stderr { line: String },
+    Done { exit_code: i32, report_path: Option<String> },
+    Error { message: String },
+}
+
+/// Extract the path of a generated Garak HTML report from one of its log
+/// lines. Garak prints variants like:
+///   "report closed :) /path/to/run.report.html"
+///   "report stored at /path/to/run.report.html"
+///   "reporting to /path/to/run.report.jsonl"
+/// Returns the first `.report.html` path seen in the line, if any.
+fn parse_report_path(line: &str) -> Option<String> {
+    // Find last .report.html occurrence
+    let needle = ".report.html";
+    let end = line.rfind(needle)?;
+    let after = end + needle.len();
+    // Walk backwards to the start of the path token
+    let bytes = line.as_bytes();
+    let mut start = end;
+    while start > 0 {
+        let b = bytes[start - 1];
+        if b == b' ' || b == b'\t' || b == b'\'' || b == b'"' || b == b'(' {
+            break;
+        }
+        start -= 1;
+    }
+    Some(line[start..after].to_string())
+}
+
+#[tauri::command]
+pub async fn garak_scan(
+    model: String,
+    probes: Option<String>,
+    generations: Option<u32>,
+    on_event: Channel<GarakEvent>,
+) -> Result<()> {
+    let probe_arg = probes.unwrap_or_else(|| "latentinjection".to_string());
+    let generations = generations.unwrap_or(3);
+
+    let mut cmd = tokio::process::Command::new("garak");
+    cmd.args([
+        "--model_type",
+        "ollama",
+        "--model_name",
+        &model,
+        "--probes",
+        &probe_arg,
+        "--generations",
+        &generations.to_string(),
+    ])
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .kill_on_drop(true);
+
+    let mut child = match cmd.spawn() {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let msg = "garak binary not found on PATH. Install with: pipx install garak".to_string();
+            let _ = on_event.send(GarakEvent::Error { message: msg.clone() });
+            return Err(LoomError::Ollama(msg));
+        }
+        Err(e) => {
+            let _ = on_event.send(GarakEvent::Error { message: e.to_string() });
+            return Err(LoomError::Io(e));
+        }
+    };
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    let stdout_chan = on_event.clone();
+    let stdout_task = tokio::spawn(async move {
+        let mut report_path: Option<String> = None;
+        if let Some(s) = stdout {
+            let mut lines = BufReader::new(s).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if report_path.is_none() {
+                    report_path = parse_report_path(&line);
+                }
+                let _ = stdout_chan.send(GarakEvent::Stdout { line });
+            }
+        }
+        report_path
+    });
+
+    let stderr_chan = on_event.clone();
+    let stderr_task = tokio::spawn(async move {
+        let mut report_path: Option<String> = None;
+        if let Some(s) = stderr {
+            let mut lines = BufReader::new(s).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if report_path.is_none() {
+                    report_path = parse_report_path(&line);
+                }
+                let _ = stderr_chan.send(GarakEvent::Stderr { line });
+            }
+        }
+        report_path
+    });
+
+    let status = child
+        .wait()
+        .await
+        .map_err(LoomError::Io)?;
+    let out_path = stdout_task.await.ok().flatten();
+    let err_path = stderr_task.await.ok().flatten();
+    let report_path = out_path.or(err_path);
+
+    on_event
+        .send(GarakEvent::Done {
+            exit_code: status.code().unwrap_or(-1),
+            report_path,
+        })
+        .map_err(|e| LoomError::Channel(e.to_string()))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_report_path_extracts_html() {
+        let line = "2026-04-16 report closed :) /home/u/.local/share/garak/runs/42.report.html";
+        assert_eq!(
+            parse_report_path(line).as_deref(),
+            Some("/home/u/.local/share/garak/runs/42.report.html"),
+        );
+    }
+
+    #[test]
+    fn parse_report_path_handles_quoted() {
+        let line = "report stored at '/tmp/x.report.html'";
+        assert_eq!(
+            parse_report_path(line).as_deref(),
+            Some("/tmp/x.report.html"),
+        );
+    }
+
+    #[test]
+    fn parse_report_path_none_for_plain_line() {
+        assert!(parse_report_path("probing jailbreak.1").is_none());
+    }
 }

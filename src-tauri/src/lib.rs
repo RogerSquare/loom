@@ -25,6 +25,7 @@ pub fn run() {
             commands::branch_checkout,
             commands::turn_pin,
             commands::session_set_context_limit,
+            commands::garak_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
