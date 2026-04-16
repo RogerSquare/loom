@@ -1,13 +1,18 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
-import { selectTimeline, useLoom } from "../lib/store";
+import { buildTimeline } from "../lib/ipc";
+import { useLoom } from "../lib/store";
 import { TurnCard } from "./TurnCard";
 
 export function Timeline() {
-  const timeline = useLoom(selectTimeline);
+  const current = useLoom((s) => s.current);
   const streaming = useLoom((s) => s.streaming);
   const streamingContent = useLoom((s) => s.streamingContent);
   const sendError = useLoom((s) => s.sendError);
+  const timeline = useMemo(
+    () => (current ? buildTimeline(current) : []),
+    [current],
+  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

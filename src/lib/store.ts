@@ -15,7 +15,6 @@ import {
   type ModelInfo,
   type SessionFile,
   type SessionSummary,
-  type Turn,
 } from "./ipc";
 
 type SendError = { message: string } | null;
@@ -169,5 +168,3 @@ export const useLoom = create<LoomStore>((set, get) => ({
   },
 }));
 
-export const selectTimeline = (s: LoomStore): Turn[] =>
-  s.current ? buildTimeline(s.current) : [];
