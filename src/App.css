@@ -401,13 +401,34 @@ html,
 }
 
 .commit-graph-svg .edge {
-  stroke: var(--border);
+  stroke: #333;
   stroke-width: 1.2;
+  opacity: 0.6;
+}
+
+.commit-graph-svg .edge.active {
+  stroke: var(--accent);
+  stroke-width: 2;
+  opacity: 1;
 }
 
 .commit-graph-svg .node circle {
-  fill: var(--bg-3);
-  stroke: var(--border);
+  fill: #2a2a2a;
+  stroke: #444;
+  stroke-width: 1;
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.commit-graph-svg .node.active circle {
+  opacity: 1;
+  stroke-width: 1.5;
+}
+
+.commit-graph-svg .node.head circle {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  opacity: 1;
 }
 
 .commit-graph-svg .node-system circle {
@@ -436,6 +457,7 @@ html,
 
 .commit-graph-svg .node.clickable:hover circle {
   stroke: var(--accent);
+  opacity: 1;
 }
 
 /* ─── Edit panel modal ─────────────────────────────────────────── */
