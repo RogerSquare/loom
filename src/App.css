@@ -470,6 +470,97 @@ html,
   outline: 1px solid var(--accent);
 }
 
+/* ─── Sweep launcher + modal ──────────────────────────────────── */
+
+.sweep-launcher-body {
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  background: var(--bg-2);
+}
+
+.sweep-panel {
+  width: min(1000px, 92vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sweep-runs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: var(--bg-2);
+}
+
+.sweep-run {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-1);
+  padding: 0.5rem 0.8rem;
+}
+
+.sweep-run-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.sweep-index {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.sweep-status {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.6rem;
+}
+
+.sweep-status.status-pending,
+.sweep-status.status-streaming {
+  background: #2a3a4a;
+  color: #7ec0e8;
+}
+
+.sweep-status.status-done {
+  background: #1f3a1f;
+  color: #7ec488;
+}
+
+.sweep-status.status-error {
+  background: #3a1f1f;
+  color: var(--danger);
+}
+
+.sweep-run-body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg);
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.sweep-run.sweep-pending .sweep-run-body,
+.sweep-run.sweep-streaming .sweep-run-body {
+  color: var(--muted);
+}
+
 .turn-footer {
   margin-top: 0.5rem;
   display: flex;

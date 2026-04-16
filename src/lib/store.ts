@@ -21,9 +21,28 @@ import {
   type SessionFile,
   type SessionSummary,
   type TokenLogprob,
+  type Turn,
 } from "./ipc";
 
 type SendError = { message: string } | null;
+
+export type SweepMode = "seed" | "temperature";
+
+export interface SweepRun {
+  id: string;
+  seed: number;
+  temperature: number;
+  status: "pending" | "streaming" | "done" | "error";
+  content: string;
+  eval_count?: number;
+  error?: string;
+}
+
+export interface SweepState {
+  sourceTurnId: string;
+  mode: SweepMode;
+  runs: SweepRun[];
+}
 
 interface LoomStore {
   // Catalog
@@ -45,6 +64,15 @@ interface LoomStore {
   setSeedDraft: (v: string) => void;
   logprobsEnabled: boolean;
   setLogprobsEnabled: (v: boolean) => void;
+
+  // Variance sweep
+  sweep: SweepState | null;
+  startSweep: (
+    turnId: string,
+    opts: { n: number; mode: SweepMode; baseOptions: ChatOptions },
+  ) => Promise<void>;
+  commitSweep: () => Promise<void>;
+  discardSweep: () => void;
 
   // Actions
   refresh: () => Promise<void>;
@@ -82,6 +110,7 @@ export const useLoom = create<LoomStore>((set, get) => ({
   setSeedDraft: (v) => set({ seedDraft: v }),
   logprobsEnabled: false,
   setLogprobsEnabled: (v) => set({ logprobsEnabled: v }),
+  sweep: null,
 
   async refresh() {
     const [sessions, models] = await Promise.all([
@@ -194,7 +223,144 @@ export const useLoom = create<LoomStore>((set, get) => ({
     const updated = await sessionSetContextLimit(current.session.id, limit);
     set({ current: updated });
   },
+
+  async startSweep(turnId, { n, mode, baseOptions }) {
+    const { current } = get();
+    if (!current) return;
+
+    const chain = chainEndingAt(current, turnId);
+    if (chain.length < 2) return; // need at least system + parent
+    // Strip the source turn itself (T); keep its parent chain.
+    const contextTurns = chain.slice(0, -1);
+    const messages: Message[] = contextTurns.map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
+
+    const runs: SweepRun[] = Array.from({ length: n }, (_, i) => ({
+      id: `sweep_${Date.now()}_${i}`,
+      seed:
+        mode === "seed"
+          ? Math.floor(Math.random() * 0x7fffffff)
+          : baseOptions.seed ?? 0,
+      temperature:
+        mode === "temperature"
+          ? lerp(0.2, 1.2, n === 1 ? 0.5 : i / (n - 1))
+          : baseOptions.temperature ?? 0.7,
+      status: "pending",
+      content: "",
+    }));
+
+    set({ sweep: { sourceTurnId: turnId, mode, runs } });
+
+    await Promise.all(
+      runs.map(async (run) => {
+        updateSweepRun(set, get, run.id, { status: "streaming" });
+        try {
+          await ollamaChat(
+            {
+              model: current.session.model,
+              messages,
+              stream: true,
+              options: {
+                ...baseOptions,
+                seed: run.seed,
+                temperature: run.temperature,
+              },
+            },
+            (ev) => {
+              if (ev.kind === "delta") {
+                const cur = pickSweepRun(get, run.id);
+                if (!cur) return;
+                updateSweepRun(set, get, run.id, {
+                  content: cur.content + ev.content,
+                });
+              } else if (ev.kind === "done") {
+                updateSweepRun(set, get, run.id, {
+                  status: "done",
+                  eval_count: ev.eval_count ?? undefined,
+                });
+              } else if (ev.kind === "error") {
+                updateSweepRun(set, get, run.id, {
+                  status: "error",
+                  error: ev.message,
+                });
+              }
+            },
+          );
+        } catch (e) {
+          updateSweepRun(set, get, run.id, {
+            status: "error",
+            error: String(e),
+          });
+        }
+      }),
+    );
+  },
+
+  async commitSweep() {
+    const { sweep, current } = get();
+    if (!sweep || !current) return;
+    for (const run of sweep.runs) {
+      if (run.status !== "done" || !run.content.trim()) continue;
+      try {
+        const after = await branchForkFromEdit(
+          current.session.id,
+          sweep.sourceTurnId,
+          run.content,
+        );
+        set({ current: after });
+      } catch (e) {
+        console.error("commitSweep: fork failed", e);
+      }
+    }
+    set({ sweep: null });
+    await get().refresh();
+  },
+
+  discardSweep() {
+    set({ sweep: null });
+  },
 }));
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
+}
+
+function chainEndingAt(file: SessionFile, turnId: string): Turn[] {
+  const chain: Turn[] = [];
+  let cur: string | null = turnId;
+  const seen = new Set<string>();
+  while (cur) {
+    if (seen.has(cur)) break;
+    seen.add(cur);
+    const t: Turn | undefined = file.turns[cur];
+    if (!t) break;
+    chain.push(t);
+    cur = t.parent;
+  }
+  return chain.reverse();
+}
+
+function pickSweepRun(get: Getter, runId: string): SweepRun | undefined {
+  return get().sweep?.runs.find((r) => r.id === runId);
+}
+
+function updateSweepRun(
+  set: Setter,
+  get: Getter,
+  runId: string,
+  patch: Partial<SweepRun>,
+) {
+  const sweep = get().sweep;
+  if (!sweep) return;
+  set({
+    sweep: {
+      ...sweep,
+      runs: sweep.runs.map((r) => (r.id === runId ? { ...r, ...patch } : r)),
+    },
+  });
+}
 
 // ───────────────────────────── internals ─────────────────────────────
 

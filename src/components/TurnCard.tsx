@@ -11,6 +11,7 @@ interface Props {
   isRoot?: boolean;
   onEdit?: (turn: Turn) => void;
   onCompare?: (left: Turn, right: Turn) => void;
+  onSweep?: (turn: Turn) => void;
 }
 
 const ROLE_LABEL: Record<Turn["role"], string> = {
@@ -27,6 +28,7 @@ export function TurnCard({
   isRoot,
   onEdit,
   onCompare,
+  onSweep,
 }: Props) {
   const current = useLoom((s) => s.current);
   const pinTurn = useLoom((s) => s.pinTurn);
@@ -133,6 +135,15 @@ export function TurnCard({
                 </div>
               )}
             </div>
+          )}
+          {onSweep && !streaming && turn.role === "assistant" && (
+            <button
+              className="edit-button"
+              onClick={() => onSweep(turn)}
+              title="run a variance sweep from this turn's prompt"
+            >
+              sweep
+            </button>
           )}
           {onEdit && !streaming && (
             <button
