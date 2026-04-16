@@ -6,6 +6,7 @@ import {
   buildContextMessages,
   listModels,
   ollamaChat,
+  ollamaContinueFromPrefill,
   sessionCreate,
   sessionDelete,
   sessionList,
@@ -89,6 +90,11 @@ interface LoomStore {
     turnId: string,
     newContent: string,
     opts: { regenerate: boolean; options?: ChatOptions },
+  ) => Promise<void>;
+  continueFromPrefill: (
+    turnId: string,
+    prefillText: string,
+    options?: ChatOptions,
   ) => Promise<void>;
   checkoutBranch: (branchId: string) => Promise<void>;
   regenerateHead: (options: ChatOptions) => Promise<void>;
@@ -182,6 +188,61 @@ export const useLoom = create<LoomStore>((set, get) => ({
       }
     } catch (e) {
       set({ sendError: { message: String(e) } });
+    }
+  },
+
+  async continueFromPrefill(turnId, prefillText, options) {
+    const { current } = get();
+    if (!current) return;
+
+    // Build context up to the edited turn's PARENT (the preceding user turn).
+    const chain = chainEndingAt(current, turnId);
+    if (chain.length < 1) return;
+    const contextTurns = chain.slice(0, -1);
+    const messages: Message[] = contextTurns.map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
+
+    set({
+      streaming: true,
+      streamingContent: prefillText,
+      streamingStartedAt: Date.now(),
+      sendError: null,
+    });
+
+    try {
+      let generated = "";
+      const opts = options ?? { temperature: 0.7, top_p: 0.9, num_ctx: 8192 };
+
+      await ollamaContinueFromPrefill(
+        current.session.model,
+        messages,
+        prefillText,
+        opts,
+        (ev) => {
+          if (ev.kind === "delta") {
+            generated += ev.content;
+            set({ streamingContent: prefillText + generated });
+          } else if (ev.kind === "error") {
+            set({ sendError: { message: ev.message } });
+          }
+          // 'done' consumed implicitly on promise resolution.
+        },
+      );
+
+      const fullContent = prefillText + generated;
+      const afterFork = await branchForkFromEdit(
+        current.session.id,
+        turnId,
+        fullContent,
+      );
+      set({ current: afterFork, sendError: null });
+      await get().refresh();
+    } catch (e) {
+      set({ sendError: { message: String(e) } });
+    } finally {
+      set({ streaming: false, streamingContent: "", streamingStartedAt: null });
     }
   },
 

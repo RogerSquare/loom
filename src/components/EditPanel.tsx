@@ -24,6 +24,7 @@ interface Props {
 
 export function EditPanel({ turn, onClose }: Props) {
   const forkFromEdit = useLoom((s) => s.forkFromEdit);
+  const continueFromPrefill = useLoom((s) => s.continueFromPrefill);
   const streaming = useLoom((s) => s.streaming);
   const [content, setContent] = useState(turn.content);
   const [regenerate, setRegenerate] = useState(
@@ -36,6 +37,8 @@ export function EditPanel({ turn, onClose }: Props) {
     setRegenerate(turn.role === "user" || turn.role === "system");
   }, [turn.id]);
 
+  const canPrefill = turn.role === "assistant";
+
   const save = async () => {
     if (!content.trim() || busy || streaming) return;
     setBusy(true);
@@ -44,6 +47,17 @@ export function EditPanel({ turn, onClose }: Props) {
         regenerate,
         options: { temperature: 0.7, top_p: 0.9, num_ctx: 8192 },
       });
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const continueHere = async () => {
+    if (!content.trim() || busy || streaming) return;
+    setBusy(true);
+    try {
+      await continueFromPrefill(turn.id, content);
       onClose();
     } finally {
       setBusy(false);
@@ -81,13 +95,25 @@ export function EditPanel({ turn, onClose }: Props) {
               type="checkbox"
               checked={regenerate}
               onChange={(e) => setRegenerate(e.target.checked)}
+              disabled={canPrefill}
             />
-            regenerate assistant reply after fork
+            {canPrefill
+              ? "(assistant turns: use 'continue from here' to extend)"
+              : "regenerate assistant reply after fork"}
           </label>
           <div className="row">
             <button onClick={onClose} disabled={busy}>
               cancel
             </button>
+            {canPrefill && (
+              <button
+                onClick={continueHere}
+                disabled={busy || !content.trim()}
+                title="use this text as prefill and let the model continue (via /api/generate raw=true)"
+              >
+                {busy ? "continuing…" : "continue from here"}
+              </button>
+            )}
             <button
               className="primary"
               onClick={save}

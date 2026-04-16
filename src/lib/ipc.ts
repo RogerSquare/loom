@@ -151,6 +151,24 @@ export async function ollamaChat(
   await invoke("ollama_chat", { req, onChunk: channel });
 }
 
+export async function ollamaContinueFromPrefill(
+  model: string,
+  messages: Message[],
+  prefill: string,
+  options: ChatOptions | undefined,
+  onEvent: (ev: StreamEvent) => void,
+): Promise<void> {
+  const channel = new Channel<StreamEvent>();
+  channel.onmessage = onEvent;
+  await invoke("ollama_continue_from_prefill", {
+    model,
+    messages,
+    prefill,
+    options: options ?? null,
+    onChunk: channel,
+  });
+}
+
 // ───────────────────────────── Session ─────────────────────────────
 
 export const sessionList = (): Promise<SessionSummary[]> =>

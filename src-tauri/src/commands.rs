@@ -12,7 +12,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use crate::error::{LoomError, Result};
 use crate::ollama::{
     self,
-    chat::{chat_stream, ChatRequest, Role, StreamEvent, TokenLogprob},
+    chat::{chat_stream, ChatRequest, Message, Options, Role, StreamEvent, TokenLogprob},
+    generate::{generate_stream, GenerateRequest},
+    templates::{render_template, ChatTemplate},
     ModelInfo,
 };
 use crate::store::{
@@ -331,6 +333,79 @@ pub async fn session_set_context_limit(
     store_ops::set_context_limit(&mut file, limit);
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
+}
+
+// ────────────────────────────── Prefill / continue ──────────────────────────
+
+/// Stream an assistant continuation starting from `prefill` text, using
+/// `/api/generate` with `raw: true`. Renders the full prompt via the
+/// per-family chat template so Ollama doesn't re-wrap the prefill.
+///
+/// The `prefill` is included in the rendered prompt so the model continues
+/// from where it ends. The returned delta events contain ONLY the tokens
+/// generated after the prefill — caller should prepend `prefill` when
+/// building the final turn content.
+#[tauri::command]
+pub async fn ollama_continue_from_prefill(
+    state: tauri::State<'_, LoomState>,
+    model: String,
+    messages: Vec<Message>,
+    prefill: String,
+    options: Option<Options>,
+    on_chunk: Channel<StreamEvent>,
+) -> Result<()> {
+    let family = ChatTemplate::from_model(&model).ok_or_else(|| {
+        LoomError::Ollama(format!(
+            "model family unknown for prefill: {model} (supported: llama3/llama-3, qwen2.5, mistral/nemo)"
+        ))
+    })?;
+
+    let prompt = render_template(family, &messages, Some(&prefill));
+
+    let req = GenerateRequest {
+        model,
+        prompt,
+        raw: true,
+        stream: true,
+        options,
+        keep_alive: None,
+    };
+
+    let stream = generate_stream(&state.http, &state.ollama_base, req).await?;
+    tokio::pin!(stream);
+
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(c) if c.done => {
+                on_chunk
+                    .send(StreamEvent::Done {
+                        prompt_eval_count: c.prompt_eval_count,
+                        eval_count: c.eval_count,
+                        prompt_eval_duration_ns: c.prompt_eval_duration,
+                        eval_duration_ns: c.eval_duration,
+                        total_duration_ns: c.total_duration,
+                    })
+                    .map_err(|e| LoomError::Channel(e.to_string()))?;
+            }
+            Ok(c) => {
+                if let Some(text) = c.response {
+                    on_chunk
+                        .send(StreamEvent::Delta {
+                            content: text,
+                            logprobs: None,
+                        })
+                        .map_err(|e| LoomError::Channel(e.to_string()))?;
+                }
+            }
+            Err(e) => {
+                let _ = on_chunk.send(StreamEvent::Error {
+                    message: e.to_string(),
+                });
+                return Err(e);
+            }
+        }
+    }
+    Ok(())
 }
 
 // ────────────────────────────── Garak scan ───────────────────────────────
