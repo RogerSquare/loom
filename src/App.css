@@ -13,29 +13,130 @@ body {
 .container {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 2rem clamp(1rem, 5vw, 4rem);
+  gap: 2rem;
+}
+
+header {
   text-align: center;
 }
 
 h1 {
-  font-size: 3.5rem;
+  font-size: 2.5rem;
   font-weight: 200;
   letter-spacing: 0.3em;
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.25rem;
   text-transform: uppercase;
 }
 
 .tagline {
   color: #888;
-  font-size: 0.9rem;
-  margin: 0 0 3rem;
+  font-size: 0.85rem;
+  margin: 0;
+  font-family: "SF Mono", Consolas, monospace;
 }
 
-.status {
-  color: #555;
-  font-size: 0.8rem;
+.debug-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field > span {
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.field select,
+.field textarea {
+  background: #252525;
+  color: #e8e8e8;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.field textarea {
   font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #5a8fc7;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+button {
+  background: #3a3a3a;
+  color: #e8e8e8;
+  border: 1px solid #4a4a4a;
+  border-radius: 4px;
+  padding: 0.5rem 1.2rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button:hover:not(:disabled) {
+  background: #4a4a4a;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.meta {
+  color: #888;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.error {
+  color: #e88;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.8rem;
+  background: #2a1a1a;
+  border-left: 2px solid #c44;
+  border-radius: 2px;
+}
+
+.response {
+  background: #101010;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 1rem;
+  margin: 0;
+  min-height: 200px;
+  max-height: 500px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
