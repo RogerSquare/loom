@@ -36,8 +36,17 @@ export function TurnCard({
   const prompt = meta?.prompt_eval_count;
   const reply = meta?.eval_count;
   const total = meta?.total_duration_ns;
+  const seed = turn.generated_by?.options?.seed;
   const isEdit = turn.annotations?.includes("edit");
   const pinned = !!turn.pinned;
+  const setSeedDraft = useLoom((s) => s.setSeedDraft);
+
+  const copySeed = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (seed == null) return;
+    setSeedDraft(seed.toString());
+    void navigator.clipboard.writeText(seed.toString()).catch(() => {});
+  };
 
   const siblings = current ? findSiblings(current, turn.id) : [];
 
@@ -135,11 +144,20 @@ export function TurnCard({
         </div>
       </div>
       <pre className="turn-body">{turn.content || (streaming ? "▍" : "")}</pre>
-      {(prompt != null || reply != null || total != null) && (
+      {(prompt != null || reply != null || total != null || seed != null) && (
         <div className="turn-footer">
           {prompt != null && <span>prompt: {prompt}</span>}
           {reply != null && <span>reply: {reply}</span>}
           {total != null && <span>{(total / 1_000_000).toFixed(0)} ms</span>}
+          {seed != null && (
+            <button
+              className="seed-pill"
+              onClick={copySeed}
+              title="click to copy seed + load into composer"
+            >
+              seed: {seed}
+            </button>
+          )}
         </div>
       )}
     </div>

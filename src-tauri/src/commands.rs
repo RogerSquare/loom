@@ -176,6 +176,7 @@ pub async fn session_create(
             default_options: Default::default(),
             default_endpoint: "http://localhost:11434/api/chat".to_string(),
             context_limit: None,
+            default_seed: None,
         },
         turns: Default::default(),
         branches: Default::default(),

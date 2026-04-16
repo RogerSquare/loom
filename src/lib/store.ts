@@ -39,6 +39,10 @@ interface LoomStore {
   streamingStartedAt: number | null;
   sendError: SendError;
 
+  // Composer-adjacent state
+  seedDraft: string;
+  setSeedDraft: (v: string) => void;
+
   // Actions
   refresh: () => Promise<void>;
   openSession: (id: string) => Promise<void>;
@@ -71,6 +75,8 @@ export const useLoom = create<LoomStore>((set, get) => ({
   streamingContent: "",
   streamingStartedAt: null,
   sendError: null,
+  seedDraft: "",
+  setSeedDraft: (v) => set({ seedDraft: v }),
 
   async refresh() {
     const [sessions, models] = await Promise.all([
@@ -85,7 +91,12 @@ export const useLoom = create<LoomStore>((set, get) => ({
 
   async openSession(id) {
     const file = await sessionOpen(id);
-    set({ current: file, streamingContent: "", sendError: null });
+    set({
+      current: file,
+      streamingContent: "",
+      sendError: null,
+      seedDraft: file.session.default_seed?.toString() ?? "",
+    });
   },
 
   closeSession() {
@@ -94,7 +105,12 @@ export const useLoom = create<LoomStore>((set, get) => ({
 
   async createSession(title, model, systemPrompt) {
     const file = await sessionCreate(title, model, systemPrompt);
-    set({ current: file, streamingContent: "", sendError: null });
+    set({
+      current: file,
+      streamingContent: "",
+      sendError: null,
+      seedDraft: file.session.default_seed?.toString() ?? "",
+    });
     await get().refresh();
   },
 

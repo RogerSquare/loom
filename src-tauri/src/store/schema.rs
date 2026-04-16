@@ -52,6 +52,10 @@ pub struct Session {
     /// turn are always included regardless of this value.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context_limit: Option<u32>,
+    /// Seed pre-filled into the Composer when this session is opened.
+    /// None = random each send (current behavior).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub default_seed: Option<i64>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

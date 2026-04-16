@@ -430,6 +430,23 @@ html,
   font-size: 0.7rem;
   color: var(--muted);
   font-family: "SF Mono", Consolas, monospace;
+  align-items: center;
+}
+
+.seed-pill {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.7rem;
+  padding: 1px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.seed-pill:hover {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .timeline .error {

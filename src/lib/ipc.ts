@@ -99,6 +99,7 @@ export interface Session {
   default_options: ChatOptions;
   default_endpoint: string;
   context_limit?: number;
+  default_seed?: number;
 }
 
 export interface SessionFile {

@@ -20,14 +20,18 @@ export function Composer() {
   const streaming = useLoom((s) => s.streaming);
   const current = useLoom((s) => s.current);
   const sendMessage = useLoom((s) => s.sendMessage);
+  const seedDraft = useLoom((s) => s.seedDraft);
+  const setSeedDraft = useLoom((s) => s.setSeedDraft);
 
   const [content, setContent] = useState("");
   const [temperature, setTemperature] = useState(0.7);
   const [topP, setTopP] = useState(0.9);
   const [numCtx, setNumCtx] = useState(8192);
-  const [seed, setSeed] = useState<string>("");
 
   if (!current) return null;
+
+  const seed = seedDraft;
+  const setSeed = setSeedDraft;
 
   const send = async () => {
     if (!content.trim() || streaming) return;
