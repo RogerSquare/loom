@@ -20,6 +20,7 @@ import {
   type ModelInfo,
   type SessionFile,
   type SessionSummary,
+  type TokenLogprob,
 } from "./ipc";
 
 type SendError = { message: string } | null;
@@ -42,6 +43,8 @@ interface LoomStore {
   // Composer-adjacent state
   seedDraft: string;
   setSeedDraft: (v: string) => void;
+  logprobsEnabled: boolean;
+  setLogprobsEnabled: (v: boolean) => void;
 
   // Actions
   refresh: () => Promise<void>;
@@ -77,6 +80,8 @@ export const useLoom = create<LoomStore>((set, get) => ({
   sendError: null,
   seedDraft: "",
   setSeedDraft: (v) => set({ seedDraft: v }),
+  logprobsEnabled: false,
+  setLogprobsEnabled: (v) => set({ logprobsEnabled: v }),
 
   async refresh() {
     const [sessions, models] = await Promise.all([
@@ -219,9 +224,11 @@ async function streamAssistantReply(
       role: t.role,
       content: t.content,
     }));
+    const logprobsEnabled = get().logprobsEnabled;
 
     let assistantText = "";
     let responseMeta: GeneratedBy["response_meta"] = {};
+    const accumulatedLogprobs: TokenLogprob[] = [];
 
     await ollamaChat(
       {
@@ -229,10 +236,12 @@ async function streamAssistantReply(
         messages,
         stream: true,
         options,
+        ...(logprobsEnabled ? { logprobs: true, top_logprobs: 5 } : {}),
       },
       (ev) => {
         if (ev.kind === "delta") {
           assistantText += ev.content;
+          if (ev.logprobs) accumulatedLogprobs.push(...ev.logprobs);
           set({ streamingContent: assistantText });
         } else if (ev.kind === "done") {
           responseMeta = {
@@ -261,6 +270,7 @@ async function streamAssistantReply(
       "assistant",
       assistantText,
       generated_by,
+      accumulatedLogprobs.length > 0 ? accumulatedLogprobs : undefined,
     );
     set({ current: afterAsst });
   } catch (e) {

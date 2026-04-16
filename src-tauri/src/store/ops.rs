@@ -37,6 +37,7 @@ pub fn fork_from_edit(
         swipe_group: None,
         pinned: false,
         thinking: None,
+        logprobs: None,
     };
 
     let new_branch_id = BranchId::generate();
@@ -160,6 +161,7 @@ mod tests {
             swipe_group: None,
             pinned: false,
             thinking: None,
+            logprobs: None,
         }
     }
 

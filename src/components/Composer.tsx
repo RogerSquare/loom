@@ -22,6 +22,8 @@ export function Composer() {
   const sendMessage = useLoom((s) => s.sendMessage);
   const seedDraft = useLoom((s) => s.seedDraft);
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
+  const logprobsEnabled = useLoom((s) => s.logprobsEnabled);
+  const setLogprobsEnabled = useLoom((s) => s.setLogprobsEnabled);
 
   const [content, setContent] = useState("");
   const [temperature, setTemperature] = useState(0.7);
@@ -96,6 +98,14 @@ export function Composer() {
             value={seed}
             onChange={(e) => setSeed(e.target.value)}
           />
+        </label>
+        <label className="toggle-label" title="capture per-token logprobs (adds storage)">
+          <input
+            type="checkbox"
+            checked={logprobsEnabled}
+            onChange={(e) => setLogprobsEnabled(e.target.checked)}
+          />
+          <span>logprobs</span>
         </label>
       </div>
 

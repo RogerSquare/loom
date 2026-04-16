@@ -122,6 +122,7 @@ mod tests {
             swipe_group: None,
             pinned: false,
             thinking: None,
+            logprobs: None,
         };
         let mut turns = BTreeMap::new();
         turns.insert(TurnId::new("t1"), turn);

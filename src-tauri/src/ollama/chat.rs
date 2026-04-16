@@ -50,6 +50,30 @@ pub struct ChatRequest {
     pub format: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub keep_alive: Option<String>,
+    /// Enable per-token logprobs in the response (Ollama v0.12.11+).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<bool>,
+    /// How many top alternatives to return per token (0–20). Requires logprobs=true.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub top_logprobs: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TopLogprobEntry {
+    pub token: String,
+    pub logprob: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<Vec<u32>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenLogprob {
+    pub token: String,
+    pub logprob: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytes: Option<Vec<u32>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub top_logprobs: Vec<TopLogprobEntry>,
 }
 
 fn default_stream() -> bool {
@@ -80,6 +104,9 @@ pub struct ChatChunk {
     pub eval_duration: Option<u64>,
     #[serde(default)]
     pub total_duration: Option<u64>,
+    /// Top-level logprobs array when the request enabled them.
+    #[serde(default)]
+    pub logprobs: Option<Vec<TokenLogprob>>,
 }
 
 /// Normalized event shipped over the Tauri Channel to the frontend.
@@ -88,6 +115,8 @@ pub struct ChatChunk {
 pub enum StreamEvent {
     Delta {
         content: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        logprobs: Option<Vec<TokenLogprob>>,
     },
     Done {
         prompt_eval_count: Option<u32>,
@@ -158,6 +187,8 @@ mod tests {
             }),
             format: None,
             keep_alive: None,
+            logprobs: None,
+            top_logprobs: None,
         };
         let json = serde_json::to_value(&req).unwrap();
         assert_eq!(json["model"], "llama3.1:8b");

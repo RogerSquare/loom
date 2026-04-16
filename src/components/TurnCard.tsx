@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { findSiblings, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
+import { LogprobsBody } from "./LogprobsBody";
 
 interface Props {
   turn: Turn;
@@ -158,7 +159,13 @@ export function TurnCard({
           <pre className="thinking-body">{turn.thinking}</pre>
         </details>
       )}
-      <pre className="turn-body">{turn.content || (streaming ? "▍" : "")}</pre>
+      {turn.logprobs && turn.logprobs.length > 0 ? (
+        <LogprobsBody logprobs={turn.logprobs} />
+      ) : (
+        <pre className="turn-body">
+          {turn.content || (streaming ? "▍" : "")}
+        </pre>
+      )}
       {(prompt != null || reply != null || total != null || seed != null) && (
         <div className="turn-footer">
           {prompt != null && <span>prompt: {prompt}</span>}

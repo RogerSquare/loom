@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use crate::error::{LoomError, Result};
 use crate::ollama::{
     self,
-    chat::{chat_stream, ChatRequest, Role, StreamEvent},
+    chat::{chat_stream, ChatRequest, Role, StreamEvent, TokenLogprob},
     ModelInfo,
 };
 use crate::store::{
@@ -93,7 +93,10 @@ pub async fn ollama_chat(
             Ok(c) => {
                 if let Some(m) = c.message {
                     on_chunk
-                        .send(StreamEvent::Delta { content: m.content })
+                        .send(StreamEvent::Delta {
+                            content: m.content,
+                            logprobs: c.logprobs,
+                        })
                         .map_err(|e| LoomError::Channel(e.to_string()))?;
                 }
             }
@@ -157,6 +160,7 @@ pub async fn session_create(
         swipe_group: None,
         pinned: false,
         thinking: None,
+        logprobs: None,
     };
 
     let main_branch = Branch {
@@ -200,6 +204,7 @@ pub async fn turn_append(
     role: Role,
     content: String,
     generated_by: Option<crate::store::schema::GeneratedBy>,
+    logprobs: Option<Vec<TokenLogprob>>,
 ) -> Result<SessionFile> {
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
@@ -228,6 +233,7 @@ pub async fn turn_append(
         swipe_group: None,
         pinned: false,
         thinking,
+        logprobs,
     };
     let new_turn_id = new_turn.id.clone();
     file.turns.insert(new_turn_id.clone(), new_turn);

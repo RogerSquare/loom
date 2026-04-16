@@ -27,10 +27,25 @@ export interface ChatRequest {
   options?: ChatOptions;
   format?: unknown;
   keep_alive?: string;
+  logprobs?: boolean;
+  top_logprobs?: number;
+}
+
+export interface TopLogprobEntry {
+  token: string;
+  logprob: number;
+  bytes?: number[];
+}
+
+export interface TokenLogprob {
+  token: string;
+  logprob: number;
+  bytes?: number[];
+  top_logprobs?: TopLogprobEntry[];
 }
 
 export type StreamEvent =
-  | { kind: "delta"; content: string }
+  | { kind: "delta"; content: string; logprobs?: TokenLogprob[] | null }
   | {
       kind: "done";
       prompt_eval_count: number | null;
@@ -82,6 +97,7 @@ export interface Turn {
   swipe_group?: string;
   pinned?: boolean;
   thinking?: string;
+  logprobs?: TokenLogprob[];
 }
 
 export interface Branch {
@@ -162,6 +178,7 @@ export const turnAppend = (
   role: Role,
   content: string,
   generated_by?: GeneratedBy,
+  logprobs?: TokenLogprob[],
 ): Promise<SessionFile> =>
   invoke("turn_append", {
     sessionId: session_id,
@@ -169,6 +186,7 @@ export const turnAppend = (
     role,
     content,
     generatedBy: generated_by ?? null,
+    logprobs: logprobs ?? null,
   });
 
 export const branchFork = (

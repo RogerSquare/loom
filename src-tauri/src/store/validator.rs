@@ -106,6 +106,7 @@ mod tests {
             swipe_group: None,
             pinned: false,
             thinking: None,
+            logprobs: None,
         }
     }
 

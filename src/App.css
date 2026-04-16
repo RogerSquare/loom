@@ -455,6 +455,21 @@ html,
   color: var(--muted);
 }
 
+.logprob-body {
+  line-height: 1.9;
+}
+
+.logprob-token {
+  border-radius: 2px;
+  padding: 1px 0;
+  transition: outline 0.1s;
+  cursor: help;
+}
+
+.logprob-token:hover {
+  outline: 1px solid var(--accent);
+}
+
 .turn-footer {
   margin-top: 0.5rem;
   display: flex;
@@ -825,6 +840,17 @@ button.primary:hover:not(:disabled) {
   border-radius: 3px;
   font-family: inherit;
   font-size: 0.8rem;
+}
+
+.toggle-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 4px !important;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: auto !important;
+  margin: 0;
 }
 
 .composer-editor {

@@ -104,6 +104,11 @@ pub struct Turn {
     /// Stored separately so the displayed response body stays clean.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub thinking: Option<String>,
+    /// Per-token logprobs captured when the chat request enabled them.
+    /// Only populated for assistant turns and only when `options.logprobs`
+    /// was true at send time. Large (~8× token count); opt-in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logprobs: Option<Vec<crate::ollama::chat::TokenLogprob>>,
 }
 
 fn is_false(b: &bool) -> bool {
