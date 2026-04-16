@@ -220,8 +220,10 @@ html,
 }
 
 .branch-tab {
+  --branch-color: var(--accent);
   background: var(--bg-2);
   border: 1px solid var(--border);
+  border-left: 3px solid transparent;
   color: var(--muted);
   font-family: "SF Mono", Consolas, monospace;
   font-size: 0.75rem;
@@ -237,12 +239,12 @@ html,
 }
 
 .branch-tab.active {
-  border-color: var(--accent);
+  border-color: var(--branch-color);
+  border-left-color: var(--branch-color);
   color: var(--fg);
 }
 
 .branch-marker {
-  color: var(--accent);
   margin-right: 5px;
   font-size: 0.7rem;
 }
@@ -400,55 +402,27 @@ html,
   padding: 0 0.5rem;
 }
 
-.commit-graph-svg .edge {
-  stroke: #333;
-  stroke-width: 1.2;
-  opacity: 0.6;
-}
-
-.commit-graph-svg .edge.active {
-  stroke: var(--accent);
-  stroke-width: 2;
-  opacity: 1;
-}
+/* Edge stroke + opacity set inline per-branch-color. CSS only governs fill. */
 
 .commit-graph-svg .node circle {
   fill: #2a2a2a;
-  stroke: #444;
-  stroke-width: 1;
-  opacity: 0.55;
   transition: opacity 0.15s;
 }
 
-.commit-graph-svg .node.active circle {
-  opacity: 1;
-  stroke-width: 1.5;
-}
-
-.commit-graph-svg .node.head circle {
-  stroke: var(--accent);
-  stroke-width: 2.5;
-  opacity: 1;
-}
-
 .commit-graph-svg .node-system circle {
-  fill: #555;
-  stroke: #777;
+  fill: #444;
 }
 
 .commit-graph-svg .node-user circle {
-  fill: #4a6a8a;
-  stroke: #6a8aaa;
+  fill: #2a3a4a;
 }
 
 .commit-graph-svg .node-assistant circle {
-  fill: #3a6a5a;
-  stroke: #5a8a7a;
+  fill: #203a30;
 }
 
 .commit-graph-svg .node-tool circle {
-  fill: #8a6a4a;
-  stroke: #aa8a6a;
+  fill: #4a3a2a;
 }
 
 .commit-graph-svg .node.clickable {
@@ -456,8 +430,7 @@ html,
 }
 
 .commit-graph-svg .node.clickable:hover circle {
-  stroke: var(--accent);
-  opacity: 1;
+  opacity: 1 !important;
 }
 
 /* ─── Edit panel modal ─────────────────────────────────────────── */

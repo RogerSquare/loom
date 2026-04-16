@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { branchColors } from "../lib/branchColors";
 import { buildTimeline, type SessionFile, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
@@ -24,8 +25,8 @@ const PAD = 14;
 /**
  * Stable lane assignment: branches sorted by created_at (oldest → lane 0).
  * A turn's lane is the lowest-indexed branch whose chain contains it.
- * This means the overall graph shape does NOT change when the user switches
- * the active branch — HEAD is communicated by color, not by layout.
+ * Graph shape is invariant across checkouts — HEAD is conveyed via color
+ * weight, not layout.
  */
 function layout(file: SessionFile): {
   nodes: Node[];
@@ -92,39 +93,42 @@ export function CommitGraph() {
   const current = useLoom((s) => s.current);
   const checkoutBranch = useLoom((s) => s.checkoutBranch);
 
-  const { nodes, edges, laneToBranch, activeTurnIds, width, height } = useMemo(() => {
-    if (!current)
+  const { nodes, edges, laneToBranch, activeTurnIds, colors, width, height } =
+    useMemo(() => {
+      if (!current)
+        return {
+          nodes: [] as Node[],
+          edges: [] as Edge[],
+          laneToBranch: [] as (string | undefined)[],
+          activeTurnIds: new Set<string>(),
+          colors: new Map<string, string>(),
+          width: 0,
+          height: 0,
+        };
+      const l = layout(current);
+      const colors = branchColors(current);
+      const maxLane = l.nodes.reduce((m, n) => Math.max(m, n.lane), 0);
+      const maxRow = l.nodes.reduce((m, n) => Math.max(m, n.row), 0);
       return {
-        nodes: [] as Node[],
-        edges: [] as Edge[],
-        laneToBranch: [] as (string | undefined)[],
-        activeTurnIds: new Set<string>(),
-        width: 0,
-        height: 0,
+        ...l,
+        colors,
+        width: PAD * 2 + (maxLane + 1) * LANE_W,
+        height: PAD * 2 + (maxRow + 1) * ROW_H,
       };
-    const l = layout(current);
-    const maxLane = l.nodes.reduce((m, n) => Math.max(m, n.lane), 0);
-    const maxRow = l.nodes.reduce((m, n) => Math.max(m, n.row), 0);
-    return {
-      ...l,
-      width: PAD * 2 + (maxLane + 1) * LANE_W,
-      height: PAD * 2 + (maxRow + 1) * ROW_H,
-    };
-  }, [current]);
+    }, [current]);
 
   if (!current || nodes.length === 0) return null;
 
   const x = (lane: number) => PAD + lane * LANE_W;
   const y = (row: number) => PAD + row * ROW_H;
 
-  const headTurnId =
-    current.branches[current.head_branch]?.head ?? null;
+  const headTurnId = current.branches[current.head_branch]?.head ?? null;
 
   return (
     <aside className="commit-graph">
       <div className="commit-graph-label">history</div>
       <svg width={width} height={height} className="commit-graph-svg">
-        {/* passive edges first, active last so they paint on top */}
+        {/* Inactive edges first, active last so they paint on top. */}
         {edges
           .slice()
           .sort((a, b) => Number(a.onActivePath) - Number(b.onActivePath))
@@ -133,15 +137,36 @@ export function CommitGraph() {
             const y1 = y(e.from.row);
             const x2 = x(e.to.lane);
             const y2 = y(e.to.row);
-            const cls = "edge" + (e.onActivePath ? " active" : "");
+            const color = colors.get(e.to.branchId) ?? "#444";
+            const stroke = color;
+            const opacity = e.onActivePath ? 1 : 0.35;
+            const width = e.onActivePath ? 2 : 1.2;
             if (x1 === x2) {
               return (
-                <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className={cls} />
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke={stroke}
+                  strokeWidth={width}
+                  opacity={opacity}
+                />
               );
             }
             const mid = (y1 + y2) / 2;
             const d = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
-            return <path key={i} d={d} className={cls} fill="none" />;
+            return (
+              <path
+                key={i}
+                d={d}
+                stroke={stroke}
+                strokeWidth={width}
+                opacity={opacity}
+                fill="none"
+              />
+            );
           })}
         {nodes.map((n) => {
           const isHead = n.turn.id === headTurnId;
@@ -150,6 +175,7 @@ export function CommitGraph() {
           const branchName = targetBranch
             ? current.branches[targetBranch].name
             : "";
+          const branchColor = colors.get(n.branchId) ?? "#444";
           return (
             <g
               key={n.turn.id}
@@ -175,6 +201,9 @@ export function CommitGraph() {
                 cx={x(n.lane)}
                 cy={y(n.row)}
                 r={isHead ? NODE_R + 1.5 : NODE_R}
+                stroke={branchColor}
+                strokeWidth={isHead ? 2.5 : isOnActivePath ? 1.5 : 1}
+                opacity={isOnActivePath ? 1 : 0.55}
               />
             </g>
           );
