@@ -511,6 +511,140 @@ button.primary:hover:not(:disabled) {
   background: #3a5a7a;
 }
 
+/* ─── Compare dropdown ─────────────────────────────────────────── */
+
+.compare-menu-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.compare-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 280px;
+  max-width: 400px;
+  z-index: 50;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.compare-menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.compare-menu-item:last-child {
+  border-bottom: none;
+}
+
+.compare-menu-item:hover {
+  background: var(--bg-2);
+}
+
+.compare-item-role {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.compare-item-preview {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* ─── Diff panel ───────────────────────────────────────────────── */
+
+.diff-panel {
+  width: min(1100px, 95vw);
+  max-height: 90vh;
+}
+
+.diff-panel header strong {
+  color: #7ec488;
+}
+
+.diff-panel header strong.removed {
+  color: #e88;
+}
+
+.diff-split {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  flex: 1;
+  overflow: hidden;
+}
+
+.diff-divider {
+  background: var(--border);
+}
+
+.diff-side {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diff-side-header {
+  padding: 0.4rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-body {
+  flex: 1;
+  margin: 0;
+  padding: 1rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--fg);
+}
+
+.diff-body ins {
+  background: #2a4a30;
+  color: #b8e8c0;
+  text-decoration: none;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+.diff-body del {
+  background: #4a2a2a;
+  color: #e8b8b8;
+  text-decoration: none;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
 /* ─── Composer ────────────────────────────────────────────────── */
 
 .composer {

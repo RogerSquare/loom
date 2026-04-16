@@ -193,6 +193,16 @@ export const branchCheckout = (
 
 // ───────────────────────────── Helpers ─────────────────────────────
 
+/** Turns with the same parent as `turnId`, excluding the turn itself. */
+export function findSiblings(file: SessionFile, turnId: string): Turn[] {
+  const t = file.turns[turnId];
+  if (!t) return [];
+  const parent = t.parent;
+  return Object.values(file.turns).filter(
+    (u) => u.id !== turnId && u.parent === parent,
+  );
+}
+
 /** Build a linear chain (root → head) for the current branch. */
 export function buildTimeline(file: SessionFile, branchId?: string): Turn[] {
   const id = branchId ?? file.head_branch;

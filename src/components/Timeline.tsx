@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { buildTimeline, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
+import { DiffPane } from "./DiffPane";
 import { EditPanel } from "./EditPanel";
 import { TurnCard } from "./TurnCard";
 
@@ -12,6 +13,9 @@ export function Timeline() {
   const sendError = useLoom((s) => s.sendError);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const [editing, setEditing] = useState<Turn | null>(null);
+  const [comparing, setComparing] = useState<{ left: Turn; right: Turn } | null>(
+    null,
+  );
 
   const timeline = useMemo(
     () => (current ? buildTimeline(current) : []),
@@ -38,7 +42,12 @@ export function Timeline() {
     <>
       <div className="timeline" ref={scrollRef}>
         {timeline.map((t) => (
-          <TurnCard key={t.id} turn={t} onEdit={setEditing} />
+          <TurnCard
+            key={t.id}
+            turn={t}
+            onEdit={setEditing}
+            onCompare={(left, right) => setComparing({ left, right })}
+          />
         ))}
         {streamingTurn && <TurnCard turn={streamingTurn} streaming />}
         {sendError && (
@@ -47,6 +56,13 @@ export function Timeline() {
       </div>
       {editing && (
         <EditPanel turn={editing} onClose={() => setEditing(null)} />
+      )}
+      {comparing && (
+        <DiffPane
+          left={comparing.left}
+          right={comparing.right}
+          onClose={() => setComparing(null)}
+        />
       )}
     </>
   );
