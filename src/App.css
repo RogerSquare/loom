@@ -423,6 +423,38 @@ html,
   color: var(--fg);
 }
 
+.thinking-panel {
+  margin-bottom: 0.6rem;
+  border-left: 2px solid var(--dim);
+  padding-left: 0.7rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.thinking-panel summary {
+  cursor: pointer;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 0;
+  user-select: none;
+}
+
+.thinking-panel summary:hover {
+  color: var(--fg);
+}
+
+.thinking-body {
+  margin: 0.4rem 0 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
 .turn-footer {
   margin-top: 0.5rem;
   display: flex;

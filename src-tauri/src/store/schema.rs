@@ -99,6 +99,11 @@ pub struct Turn {
     pub swipe_group: Option<String>,
     #[serde(default, skip_serializing_if = "is_false")]
     pub pinned: bool,
+    /// Reasoning/thinking text extracted from `<think>...</think>` blocks
+    /// emitted by reasoning-capable models (qwq, DeepSeek-R1 family).
+    /// Stored separately so the displayed response body stays clean.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
 }
 
 fn is_false(b: &bool) -> bool {

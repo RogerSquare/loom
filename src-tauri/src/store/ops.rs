@@ -36,6 +36,7 @@ pub fn fork_from_edit(
         annotations: vec!["edit".to_string()],
         swipe_group: None,
         pinned: false,
+        thinking: None,
     };
 
     let new_branch_id = BranchId::generate();
@@ -99,6 +100,45 @@ pub fn set_context_limit(file: &mut SessionFile, limit: Option<u32>) {
     file.session.context_limit = limit;
 }
 
+/// Split an assistant response into (reasoning, clean_content).
+/// Recognizes `<think>...</think>` blocks (DeepSeek-R1 / qwq convention).
+/// Multiple blocks are joined with a blank line. Unclosed `<think>` blocks
+/// are treated as reasoning through end of input. No blocks → (None, text).
+pub fn split_thinking(text: &str) -> (Option<String>, String) {
+    let open = "<think>";
+    let close = "</think>";
+
+    if !text.contains(open) {
+        return (None, text.to_string());
+    }
+
+    let mut thoughts: Vec<String> = Vec::new();
+    let mut clean = String::new();
+    let mut rest = text;
+
+    while let Some(open_idx) = rest.find(open) {
+        clean.push_str(&rest[..open_idx]);
+        let after_open = &rest[open_idx + open.len()..];
+        if let Some(close_idx) = after_open.find(close) {
+            thoughts.push(after_open[..close_idx].trim().to_string());
+            rest = &after_open[close_idx + close.len()..];
+        } else {
+            // Unclosed: rest of text is reasoning.
+            thoughts.push(after_open.trim().to_string());
+            rest = "";
+            break;
+        }
+    }
+    clean.push_str(rest);
+
+    let thinking = if thoughts.is_empty() {
+        None
+    } else {
+        Some(thoughts.join("\n\n"))
+    };
+    (thinking, clean.trim_start_matches('\n').to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -119,6 +159,7 @@ mod tests {
             annotations: vec![],
             swipe_group: None,
             pinned: false,
+            thinking: None,
         }
     }
 
@@ -279,6 +320,41 @@ mod tests {
         let mut file = base_session();
         let err = set_pinned(&mut file, &TurnId::new("t_nope"), true);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn split_thinking_no_block_returns_none() {
+        let (t, c) = split_thinking("just a plain response.");
+        assert_eq!(t, None);
+        assert_eq!(c, "just a plain response.");
+    }
+
+    #[test]
+    fn split_thinking_single_block() {
+        let (t, c) = split_thinking("<think>reason here</think>\nfinal answer");
+        assert_eq!(t.as_deref(), Some("reason here"));
+        assert_eq!(c, "final answer");
+    }
+
+    #[test]
+    fn split_thinking_multiple_blocks_joined() {
+        let input = "<think>step 1</think>maybe <think>step 2</think>done.";
+        let (t, c) = split_thinking(input);
+        assert_eq!(t.as_deref(), Some("step 1\n\nstep 2"));
+        assert_eq!(c, "maybe done.");
+    }
+
+    #[test]
+    fn split_thinking_unclosed_block_grabs_rest() {
+        let (t, c) = split_thinking("prefix <think>dangling reasoning");
+        assert_eq!(t.as_deref(), Some("dangling reasoning"));
+        assert_eq!(c, "prefix ");
+    }
+
+    #[test]
+    fn split_thinking_preserves_whitespace_in_clean() {
+        let (_, c) = split_thinking("<think>x</think>\n\na\nb\n");
+        assert_eq!(c, "a\nb\n");
     }
 
     #[test]

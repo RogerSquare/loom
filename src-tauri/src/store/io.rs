@@ -121,6 +121,7 @@ mod tests {
             annotations: vec!["note".to_string()],
             swipe_group: None,
             pinned: false,
+            thinking: None,
         };
         let mut turns = BTreeMap::new();
         turns.insert(TurnId::new("t1"), turn);

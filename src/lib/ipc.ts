@@ -81,6 +81,7 @@ export interface Turn {
   annotations?: string[];
   swipe_group?: string;
   pinned?: boolean;
+  thinking?: string;
 }
 
 export interface Branch {

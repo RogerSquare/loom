@@ -105,6 +105,7 @@ mod tests {
             annotations: vec![],
             swipe_group: None,
             pinned: false,
+            thinking: None,
         }
     }
 

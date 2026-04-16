@@ -40,6 +40,7 @@ export function TurnCard({
   const isEdit = turn.annotations?.includes("edit");
   const pinned = !!turn.pinned;
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
+  const [thinkingOpen, setThinkingOpen] = useState(false);
 
   const copySeed = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -143,6 +144,20 @@ export function TurnCard({
           )}
         </div>
       </div>
+      {turn.thinking && (
+        <details
+          className="thinking-panel"
+          open={thinkingOpen}
+          onToggle={(e) =>
+            setThinkingOpen((e.currentTarget as HTMLDetailsElement).open)
+          }
+        >
+          <summary>
+            thinking ({turn.thinking.split(/\s+/).filter(Boolean).length} words)
+          </summary>
+          <pre className="thinking-body">{turn.thinking}</pre>
+        </details>
+      )}
       <pre className="turn-body">{turn.content || (streaming ? "▍" : "")}</pre>
       {(prompt != null || reply != null || total != null || seed != null) && (
         <div className="turn-footer">

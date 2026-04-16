@@ -156,6 +156,7 @@ pub async fn session_create(
         annotations: vec![],
         swipe_group: None,
         pinned: false,
+        thinking: None,
     };
 
     let main_branch = Branch {
@@ -210,16 +211,23 @@ pub async fn turn_append(
         .head
         .clone();
 
+    let (thinking, cleaned) = if matches!(role, Role::Assistant) {
+        store_ops::split_thinking(&content)
+    } else {
+        (None, content)
+    };
+
     let new_turn = Turn {
         id: TurnId::generate(),
         parent: Some(parent),
         role,
-        content,
+        content: cleaned,
         created_at: now_iso(),
         generated_by,
         annotations: vec![],
         swipe_group: None,
         pinned: false,
+        thinking,
     };
     let new_turn_id = new_turn.id.clone();
     file.turns.insert(new_turn_id.clone(), new_turn);
