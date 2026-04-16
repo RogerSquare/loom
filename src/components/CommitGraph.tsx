@@ -137,10 +137,9 @@ export function CommitGraph() {
             const y1 = y(e.from.row);
             const x2 = x(e.to.lane);
             const y2 = y(e.to.row);
-            const color = colors.get(e.to.branchId) ?? "#444";
-            const stroke = color;
-            const opacity = e.onActivePath ? 1 : 0.35;
-            const width = e.onActivePath ? 2 : 1.2;
+            const stroke = colors.get(e.to.branchId) ?? "#444";
+            const opacity = e.onActivePath ? 1 : 0.4;
+            const width = e.onActivePath ? 2 : 1.3;
             if (x1 === x2) {
               return (
                 <line
@@ -155,8 +154,18 @@ export function CommitGraph() {
                 />
               );
             }
-            const mid = (y1 + y2) / 2;
-            const d = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
+            // Cross-lane: elbow right below the parent, then straight down in
+            // the child's lane. Anchors the fork at the parent's row.
+            const turnY = y1 + ROW_H / 2;
+            const r = 6;
+            const horizDir = x2 > x1 ? 1 : -1;
+            const d =
+              `M ${x1} ${y1} ` +
+              `L ${x1} ${turnY - r} ` +
+              `Q ${x1} ${turnY} ${x1 + horizDir * r} ${turnY} ` +
+              `L ${x2 - horizDir * r} ${turnY} ` +
+              `Q ${x2} ${turnY} ${x2} ${turnY + r} ` +
+              `L ${x2} ${y2}`;
             return (
               <path
                 key={i}
