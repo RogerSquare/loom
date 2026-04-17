@@ -208,7 +208,6 @@ export function SessionSidebar() {
 
       <ul className="session-list">
         {sessionsLoading && sessions.length === 0 && (
-          <li className="empty loading-pulse">loading sessions...</li>
         )}
         {!sessionsLoading && sessions.length === 0 && !creating && (
           <li className="empty">no sessions yet -- click + to start</li>

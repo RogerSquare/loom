@@ -10,6 +10,15 @@ interface Props {
   onClose: () => void;
 }
 
+function applyTheme(theme: string) {
+  const root = document.documentElement;
+  root.classList.remove("dark", "light");
+  if (theme === "dark" || theme === "light") {
+    root.classList.add(theme);
+  }
+  // "system" = no class, let prefers-color-scheme decide
+}
+
 export function SettingsModal({ onClose }: Props) {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saving, setSaving] = useState(false);
@@ -31,6 +40,7 @@ export function SettingsModal({ onClose }: Props) {
     setSaving(true);
     try {
       await settingsSave(settings);
+      applyTheme(settings.theme);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -47,7 +57,7 @@ export function SettingsModal({ onClose }: Props) {
         <header>
           <span>settings</span>
           <button className="icon-button" onClick={onClose}>
-            ×
+            x
           </button>
         </header>
 
@@ -148,14 +158,15 @@ export function SettingsModal({ onClose }: Props) {
               onChange={(e) => update({ theme: e.target.value })}
             >
               <option value="dark">dark</option>
-              <option value="light">light (coming soon)</option>
+              <option value="light">light</option>
+              <option value="system">system (auto)</option>
             </select>
           </label>
         </div>
 
         <footer>
           <span className="muted">
-            {saved ? "saved ✓" : saving ? "saving…" : ""}
+            {saved ? "saved" : saving ? "saving..." : ""}
           </span>
           <div className="row">
             <button onClick={onClose}>close</button>
