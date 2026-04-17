@@ -91,6 +91,7 @@ pub fn list_sessions(dir: &Path) -> Result<Vec<SessionSummary>> {
                 model: file.session.model,
                 turn_count: file.turns.len(),
                 branch_count: file.branches.len(),
+                tags: file.session.tags,
             });
         }
     }
@@ -150,6 +151,7 @@ mod tests {
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
                 context_limit: None,
                 default_seed: None,
+                tags: vec![],
             },
             turns,
             branches,

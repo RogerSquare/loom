@@ -229,6 +229,7 @@ pub async fn session_create(
             default_endpoint: "http://localhost:11434/api/chat".to_string(),
             context_limit: None,
             default_seed: None,
+            tags: vec![],
         },
         turns: Default::default(),
         branches: Default::default(),
@@ -399,6 +400,32 @@ pub async fn session_set_context_limit(
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
     store_ops::set_context_limit(&mut file, limit);
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn session_set_tags(
+    app: AppHandle,
+    session_id: SessionId,
+    tags: Vec<String>,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    file.session.tags = tags;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn session_set_model(
+    app: AppHandle,
+    session_id: SessionId,
+    model: String,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    file.session.model = model;
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
 }

@@ -26,6 +26,8 @@ pub fn run() {
             commands::turn_pin,
             commands::turn_annotate,
             commands::session_set_context_limit,
+            commands::session_set_tags,
+            commands::session_set_model,
             commands::settings_load,
             commands::settings_save,
             commands::prompt_list,

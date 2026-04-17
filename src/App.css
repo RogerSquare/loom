@@ -171,6 +171,177 @@ html,
   text-align: center;
 }
 
+/* ─── Sidebar search & tags ──────────────────────────────────── */
+
+.sidebar-search {
+  position: relative;
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-search input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg);
+  padding: 0.35rem 1.8rem 0.35rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.sidebar-search input::placeholder {
+  color: var(--dim);
+}
+
+.search-clear {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.search-clear:hover {
+  color: var(--fg);
+}
+
+.tag-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0.35rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tag-chip {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.65rem;
+  padding: 1px 8px;
+  cursor: pointer;
+}
+
+.tag-chip:hover {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+
+.tag-chip.active {
+  background: var(--accent);
+  color: #111;
+  border-color: var(--accent);
+}
+
+.session-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.tag-badge {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 0.6rem;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.tag-badge.removable button {
+  background: transparent;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 0.6rem;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.tag-badge.removable button:hover {
+  color: var(--danger);
+}
+
+/* ─── Session tag editor (header) ────────────────────────────── */
+
+.session-tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tag-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  width: 60px;
+}
+
+.tag-input:focus {
+  border-color: var(--border);
+  outline: none;
+  background: var(--bg);
+  width: 100px;
+}
+
+.tag-input::placeholder {
+  color: var(--dim);
+}
+
+/* ─── Model switcher ─────────────────────────────────────────── */
+
+.model-switcher {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-family: "SF Mono", Consolas, monospace;
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.model-switcher:hover {
+  border-color: var(--border);
+  background: var(--bg);
+}
+
+.model-switcher option {
+  background: var(--bg-2);
+  color: var(--fg);
+}
+
+.model-missing-hint {
+  font-size: 0.7rem;
+  color: var(--danger);
+  margin-top: 2px;
+}
+
+.copy-hint {
+  cursor: pointer;
+  border-bottom: 1px dashed var(--muted);
+}
+
+.copy-hint:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 /* ─── Main pane ───────────────────────────────────────────────── */
 
 .main {
