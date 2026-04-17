@@ -38,21 +38,29 @@ export function TurnCard({
   const [compareOpen, setCompareOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const meta = turn.generated_by?.response_meta;
+  const meta = displayed.generated_by?.response_meta;
   const prompt = meta?.prompt_eval_count;
   const reply = meta?.eval_count;
   const total = meta?.total_duration_ns;
-  const seed = turn.generated_by?.options?.seed;
-  const isEdit = turn.annotations?.includes("edit");
-  const pinned = !!turn.pinned;
+  const seed = displayed.generated_by?.options?.seed;
+  const isEdit = displayed.annotations?.includes("edit");
+  const pinned = !!displayed.pinned;
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
   const annotateTurn = useLoom((s) => s.annotateTurn);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [rerunOpen, setRerunOpen] = useState(false);
   const [noteInput, setNoteInput] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
 
-  const annotations = turn.annotations?.filter((a) => a !== "edit") ?? [];
+  const allVersions = siblings.length > 0 ? [turn, ...siblings] : [turn];
+  const hasSwipe = allVersions.length > 1;
+  const swipeIdx =
+    ((swipeOffset % allVersions.length) + allVersions.length) %
+    allVersions.length;
+  const displayed = allVersions[swipeIdx];
+
+  const annotations = displayed.annotations?.filter((a) => a !== "edit") ?? [];
 
   const addNote = () => {
     if (!noteInput.trim()) return;
@@ -90,7 +98,7 @@ export function TurnCard({
   return (
     <div
       className={
-        `turn turn-${turn.role}` +
+        `turn turn-${displayed.role}` +
         (streaming ? " streaming" : "") +
         (excluded ? " excluded" : "") +
         (pinned ? " pinned" : "")
@@ -98,7 +106,32 @@ export function TurnCard({
     >
       <div className="turn-header">
         <span className="role">
-          {ROLE_LABEL[turn.role]}
+          {ROLE_LABEL[displayed.role]}
+          {hasSwipe && (
+            <span className="swipe-controls">
+              <button
+                className="swipe-arrow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSwipeOffset((o) => o - 1);
+                }}
+              >
+                ‹
+              </button>
+              <span className="swipe-counter">
+                {swipeIdx + 1}/{allVersions.length}
+              </span>
+              <button
+                className="swipe-arrow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSwipeOffset((o) => o + 1);
+                }}
+              >
+                ›
+              </button>
+            </span>
+          )}
           {isEdit && <span className="edit-badge">edited</span>}
           {excluded && (
             <span
@@ -211,7 +244,7 @@ export function TurnCard({
           )}
         </div>
       </div>
-      {turn.thinking && (
+      {displayed.thinking && (
         <details
           className="thinking-panel"
           open={thinkingOpen}
@@ -220,16 +253,16 @@ export function TurnCard({
           }
         >
           <summary>
-            thinking ({turn.thinking.split(/\s+/).filter(Boolean).length} words)
+            thinking ({displayed.thinking.split(/\s+/).filter(Boolean).length} words)
           </summary>
-          <pre className="thinking-body">{turn.thinking}</pre>
+          <pre className="thinking-body">{displayed.thinking}</pre>
         </details>
       )}
-      {turn.logprobs && turn.logprobs.length > 0 ? (
-        <LogprobsBody logprobs={turn.logprobs} />
+      {displayed.logprobs && displayed.logprobs.length > 0 ? (
+        <LogprobsBody logprobs={displayed.logprobs} />
       ) : (
         <pre className="turn-body">
-          {turn.content || (streaming ? "▍" : "")}
+          {displayed.content || (streaming ? "▍" : "")}
         </pre>
       )}
       {annotations.length > 0 && (

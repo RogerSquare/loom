@@ -355,6 +355,45 @@ html,
   opacity: 1;
 }
 
+/* ─── Swipe controls ──────────────────────────────────────────── */
+
+.swipe-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0.5rem;
+  font-size: 0.7rem;
+}
+
+.swipe-arrow {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swipe-arrow:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.swipe-counter {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+  min-width: 28px;
+  text-align: center;
+}
+
 .excluded-badge {
   margin-left: 0.5rem;
   padding: 1px 6px;
