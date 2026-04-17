@@ -135,29 +135,48 @@ pub async fn ollama_list_models(state: tauri::State<'_, LoomState>) -> Result<Ve
 
 #[tauri::command]
 pub async fn ollama_chat(
+    app: AppHandle,
     state: tauri::State<'_, LoomState>,
     req: ChatRequest,
     on_chunk: Channel<StreamEvent>,
 ) -> Result<()> {
+    let settings = settings_load_inner(&app).unwrap_or_default();
+    let model_id = req.model.clone();
     let stream = chat_stream(&state.http, &state.ollama_base, req).await?;
     tokio::pin!(stream);
+
+    let start = std::time::Instant::now();
+    let mut first_token_at: Option<std::time::Instant> = None;
 
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(c) if c.done => {
+                let ttft_ns =
+                    first_token_at.map(|t| t.duration_since(start).as_nanos() as u64);
                 let event = StreamEvent::Done {
                     prompt_eval_count: c.prompt_eval_count,
                     eval_count: c.eval_count,
                     prompt_eval_duration_ns: c.prompt_eval_duration,
                     eval_duration_ns: c.eval_duration,
                     total_duration_ns: c.total_duration,
+                    ttft_ns,
+                    cached_tokens: None,
+                    reasoning_tokens: None,
+                    cost_usd: None,
+                    stop_reason: c.done_reason.clone(),
+                    refusal_label: None,
+                    provider_id: Some("ollama".to_string()),
+                    model_id: Some(model_id.clone()),
                 };
                 on_chunk
-                    .send(event)
+                    .send(enrich_done_with_cost(event, &settings))
                     .map_err(|e| LoomError::Channel(e.to_string()))?;
             }
             Ok(c) => {
                 if let Some(m) = c.message {
+                    if !m.content.is_empty() && first_token_at.is_none() {
+                        first_token_at = Some(std::time::Instant::now());
+                    }
                     on_chunk
                         .send(StreamEvent::Delta {
                             content: m.content,
@@ -217,8 +236,9 @@ pub async fn llm_chat(
     while let Some(event_result) = stream.next().await {
         match event_result {
             Ok(event) => {
+                let enriched = enrich_done_with_cost(event, &settings);
                 on_chunk
-                    .send(event)
+                    .send(enriched)
                     .map_err(|e| LoomError::Channel(e.to_string()))?;
             }
             Err(e) => {
@@ -565,6 +585,11 @@ pub struct AppSettings {
     /// API keys per provider (e.g. "anthropic" -> "sk-ant-...").
     #[serde(default)]
     pub api_keys: HashMap<String, String>,
+    /// User-supplied per-model pricing overrides keyed by model_id.
+    /// Wins over bundled defaults from `pricing::bundled_prices()`.
+    /// Editor UI is a follow-up task; for now this ships wired-only.
+    #[serde(default)]
+    pub pricing_overrides: HashMap<String, crate::pricing::ModelPricing>,
 }
 
 fn default_endpoint() -> String { "http://localhost:11434".to_string() }
@@ -585,7 +610,55 @@ impl Default for AppSettings {
             theme: default_theme(),
             first_run_done: false,
             api_keys: HashMap::new(),
+            pricing_overrides: HashMap::new(),
         }
+    }
+}
+
+/// Fill in `cost_usd` on a Done event using the pricing table + user overrides.
+/// Non-Done events pass through unchanged. Model-id absent from the pricing
+/// table (e.g. Ollama models) → cost stays None.
+fn enrich_done_with_cost(event: StreamEvent, settings: &AppSettings) -> StreamEvent {
+    use crate::pricing;
+    if let StreamEvent::Done {
+        prompt_eval_count,
+        eval_count,
+        prompt_eval_duration_ns,
+        eval_duration_ns,
+        total_duration_ns,
+        ttft_ns,
+        cached_tokens,
+        reasoning_tokens,
+        cost_usd,
+        stop_reason,
+        refusal_label,
+        provider_id,
+        model_id,
+    } = event
+    {
+        let enriched_cost = cost_usd.or_else(|| {
+            model_id
+                .as_deref()
+                .and_then(|m| pricing::lookup(m, &settings.pricing_overrides))
+                .map(|p| pricing::compute_cost(prompt_eval_count, eval_count, cached_tokens, &p))
+        });
+        StreamEvent::Done {
+            prompt_eval_count,
+            eval_count,
+            prompt_eval_duration_ns,
+            eval_duration_ns,
+            total_duration_ns,
+            ttft_ns,
+            cached_tokens,
+            reasoning_tokens,
+            cost_usd: enriched_cost,
+            stop_reason,
+            refusal_label,
+            provider_id,
+            model_id,
+        }
+    } else {
+        event
     }
 }
 
@@ -697,6 +770,7 @@ pub async fn prompt_delete(app: AppHandle, name: String) -> Result<()> {
 /// building the final turn content.
 #[tauri::command]
 pub async fn ollama_continue_from_prefill(
+    app: AppHandle,
     state: tauri::State<'_, LoomState>,
     model: String,
     messages: Vec<Message>,
@@ -704,6 +778,7 @@ pub async fn ollama_continue_from_prefill(
     options: Option<Options>,
     on_chunk: Channel<StreamEvent>,
 ) -> Result<()> {
+    let settings = settings_load_inner(&app).unwrap_or_default();
     let family = ChatTemplate::from_model(&model).ok_or_else(|| {
         LoomError::Ollama(format!(
             "model family unknown for prefill: {model} (supported: llama3/llama-3, qwen2.5, mistral/nemo)"
@@ -712,6 +787,7 @@ pub async fn ollama_continue_from_prefill(
 
     let prompt = render_template(family, &messages, Some(&prefill));
 
+    let model_id = model.clone();
     let req = GenerateRequest {
         model,
         prompt,
@@ -724,21 +800,38 @@ pub async fn ollama_continue_from_prefill(
     let stream = generate_stream(&state.http, &state.ollama_base, req).await?;
     tokio::pin!(stream);
 
+    let start = std::time::Instant::now();
+    let mut first_token_at: Option<std::time::Instant> = None;
+
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(c) if c.done => {
+                let ttft_ns =
+                    first_token_at.map(|t| t.duration_since(start).as_nanos() as u64);
+                let done_event = StreamEvent::Done {
+                    prompt_eval_count: c.prompt_eval_count,
+                    eval_count: c.eval_count,
+                    prompt_eval_duration_ns: c.prompt_eval_duration,
+                    eval_duration_ns: c.eval_duration,
+                    total_duration_ns: c.total_duration,
+                    ttft_ns,
+                    cached_tokens: None,
+                    reasoning_tokens: None,
+                    cost_usd: None,
+                    stop_reason: c.done_reason.clone(),
+                    refusal_label: None,
+                    provider_id: Some("ollama".to_string()),
+                    model_id: Some(model_id.clone()),
+                };
                 on_chunk
-                    .send(StreamEvent::Done {
-                        prompt_eval_count: c.prompt_eval_count,
-                        eval_count: c.eval_count,
-                        prompt_eval_duration_ns: c.prompt_eval_duration,
-                        eval_duration_ns: c.eval_duration,
-                        total_duration_ns: c.total_duration,
-                    })
+                    .send(enrich_done_with_cost(done_event, &settings))
                     .map_err(|e| LoomError::Channel(e.to_string()))?;
             }
             Ok(c) => {
                 if let Some(text) = c.response {
+                    if !text.is_empty() && first_token_at.is_none() {
+                        first_token_at = Some(std::time::Instant::now());
+                    }
                     on_chunk
                         .send(StreamEvent::Delta {
                             content: text,

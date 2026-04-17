@@ -1,4 +1,6 @@
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
@@ -94,18 +96,44 @@ impl Provider for OllamaProvider {
 
         let stream = chat_stream(client, &self.base_url, req).await?;
 
-        // Convert ChatChunk stream → StreamEvent stream
-        let event_stream = stream.map(|chunk_result| {
-            chunk_result.map(|c| {
+        // Wall-clock start + first-token capture. Stored in Arc<Mutex> so the
+        // async stream map closure can both read and write across iterations.
+        let start = Instant::now();
+        let first_token_at: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
+        let model_id = model.to_string();
+
+        let event_stream = stream.map(move |chunk_result| {
+            let first_at = Arc::clone(&first_token_at);
+            let model_id = model_id.clone();
+            chunk_result.map(move |c| {
                 if c.done {
+                    let ttft_ns = first_at
+                        .lock()
+                        .ok()
+                        .and_then(|g| g.map(|t| t.duration_since(start).as_nanos() as u64));
                     StreamEvent::Done {
                         prompt_eval_count: c.prompt_eval_count,
                         eval_count: c.eval_count,
                         prompt_eval_duration_ns: c.prompt_eval_duration,
                         eval_duration_ns: c.eval_duration,
                         total_duration_ns: c.total_duration,
+                        ttft_ns,
+                        cached_tokens: None,
+                        reasoning_tokens: None,
+                        cost_usd: None,
+                        stop_reason: c.done_reason.clone(),
+                        refusal_label: None,
+                        provider_id: Some("ollama".to_string()),
+                        model_id: Some(model_id),
                     }
                 } else if let Some(m) = c.message {
+                    if !m.content.is_empty() {
+                        if let Ok(mut slot) = first_at.lock() {
+                            if slot.is_none() {
+                                *slot = Some(Instant::now());
+                            }
+                        }
+                    }
                     StreamEvent::Delta {
                         content: m.content,
                         logprobs: c.logprobs,

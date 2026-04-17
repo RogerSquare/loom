@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 
+import { formatCost } from "../lib/format";
 import { findSiblings, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 import { LogprobsBody } from "./LogprobsBody";
@@ -43,6 +44,7 @@ export const TurnCard = memo(function TurnCard({
   const [compareOpen, setCompareOpen] = useState(false);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [rerunOpen, setRerunOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [noteInput, setNoteInput] = useState("");
   const [addingNote, setAddingNote] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -61,6 +63,26 @@ export const TurnCard = memo(function TurnCard({
   const reply = meta?.eval_count;
   const total = meta?.total_duration_ns;
   const seed = displayed.generated_by?.options?.seed;
+  const cost = meta?.cost_usd;
+  const ttft = meta?.ttft_ns;
+  const cached = meta?.cached_tokens;
+  const reasoning = meta?.reasoning_tokens;
+  const stopReason = meta?.stop_reason;
+  const refusal = meta?.refusal_label;
+  const providerId = meta?.provider_id;
+  const modelId = meta?.model_id;
+
+  const hasDetails =
+    ttft != null || cached != null || reasoning != null || stopReason || refusal;
+  const hasFooter =
+    prompt != null ||
+    reply != null ||
+    total != null ||
+    seed != null ||
+    cost != null ||
+    providerId ||
+    modelId ||
+    refusal;
   const isEdit = displayed.annotations?.includes("edit");
   const pinned = !!displayed.pinned;
   const annotations = displayed.annotations?.filter((a) => a !== "edit") ?? [];
@@ -226,11 +248,34 @@ export const TurnCard = memo(function TurnCard({
       )}
 
       {/* ── Footer: response meta ── */}
-      {(prompt != null || reply != null || total != null || seed != null) && (
+      {hasFooter && (
         <div className="turn-footer">
+          {providerId && (
+            <span
+              className={`provider-pill provider-${providerId}`}
+              title={`provider: ${providerId}`}
+            >
+              {providerId}
+            </span>
+          )}
+          {modelId && (
+            <span className="model-pill" title={`model: ${modelId}`}>
+              {modelId}
+            </span>
+          )}
           {prompt != null && <span>prompt: {prompt}</span>}
           {reply != null && <span>reply: {reply}</span>}
           {total != null && <span>{(total / 1_000_000).toFixed(0)} ms</span>}
+          {cost != null && cost > 0 && (
+            <span className="cost-pill" title="computed cost (USD)">
+              {formatCost(cost)}
+            </span>
+          )}
+          {refusal && (
+            <span className="refusal-pill" title={`refusal: ${refusal}`}>
+              refused
+            </span>
+          )}
           {seed != null && (
             <button
               className="seed-pill"
@@ -239,6 +284,38 @@ export const TurnCard = memo(function TurnCard({
             >
               seed: {seed}
             </button>
+          )}
+          {hasDetails && (
+            <button
+              className="details-toggle"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDetailsOpen((v) => !v);
+              }}
+              title={detailsOpen ? "hide details" : "show details"}
+              aria-label={detailsOpen ? "hide details" : "show details"}
+              aria-expanded={detailsOpen}
+            >
+              {detailsOpen ? "\u2212" : "i"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Details row (expandable) ── */}
+      {hasFooter && hasDetails && detailsOpen && (
+        <div className="turn-details">
+          {ttft != null && (
+            <span title="time to first token">
+              ttft: {(ttft / 1_000_000).toFixed(0)} ms
+            </span>
+          )}
+          {cached != null && <span>cached: {cached}</span>}
+          {reasoning != null && <span>reasoning: {reasoning}</span>}
+          {stopReason && (
+            <span className="stop-reason-pill" title={`stop_reason: ${stopReason}`}>
+              {stopReason}
+            </span>
           )}
         </div>
       )}
