@@ -828,4 +828,36 @@ mod tests {
     fn parse_report_path_none_for_plain_line() {
         assert!(parse_report_path("probing jailbreak.1").is_none());
     }
+
+    #[test]
+    fn parse_report_path_with_spaces_in_path() {
+        let line = "report closed :) /home/user name/.local/share/garak/runs/abc.report.html";
+        // Space in username — parser takes from last space before .report.html
+        assert!(parse_report_path(line).is_some());
+        assert!(parse_report_path(line).unwrap().ends_with(".report.html"));
+    }
+
+    #[test]
+    fn parse_report_path_windows_path() {
+        let line = r"report closed :) C:\Users\Roger\.local\share\garak\runs\x.report.html";
+        assert!(parse_report_path(line).is_some());
+    }
+
+    #[test]
+    fn validate_shell_safe_rejects_semicolons() {
+        assert!(validate_shell_safe("model; rm -rf /", "test").is_err());
+    }
+
+    #[test]
+    fn validate_shell_safe_allows_model_names() {
+        assert!(validate_shell_safe("llama3.1:8b", "model").is_ok());
+        assert!(validate_shell_safe("qwen2.5-coder:7b", "model").is_ok());
+        assert!(validate_shell_safe("mistral-nemo:12b", "model").is_ok());
+    }
+
+    #[test]
+    fn validate_prompt_name_rejects_traversal() {
+        assert!(validate_prompt_name("../etc/passwd").is_err());
+        assert!(validate_prompt_name("good-name_123").is_ok());
+    }
 }
