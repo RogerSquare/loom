@@ -59,6 +59,14 @@ pub struct Session {
     /// User-defined tags for session organization and filtering.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tags: Vec<String>,
+    /// LLM provider for this session (e.g. "ollama", "anthropic").
+    /// Defaults to "ollama" for backward compatibility with existing sessions.
+    #[serde(default = "default_provider")]
+    pub provider: String,
+}
+
+fn default_provider() -> String {
+    "ollama".to_string()
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -148,6 +156,7 @@ pub struct SessionSummary {
     pub turn_count: usize,
     pub branch_count: usize,
     pub tags: Vec<String>,
+    pub provider: String,
 }
 
 #[cfg(test)]

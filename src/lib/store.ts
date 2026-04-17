@@ -9,6 +9,7 @@ import {
   garakScan,
   turnAnnotate,
   listModels,
+  llmChat,
   ollamaChat,
   ollamaContinueFromPrefill,
   sessionCreate,
@@ -115,6 +116,7 @@ interface LoomStore {
     title: string,
     model: string,
     systemPrompt?: string,
+    provider?: string,
   ) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   sendMessage: (content: string, options: ChatOptions) => Promise<void>;
@@ -204,8 +206,8 @@ export const useLoom = create<LoomStore>((set, get) => ({
     set({ current: null, streamingContent: "", sendError: null });
   },
 
-  async createSession(title, model, systemPrompt) {
-    const file = await sessionCreate(title, model, systemPrompt);
+  async createSession(title, model, systemPrompt, provider) {
+    const file = await sessionCreate(title, model, systemPrompt, provider);
     set({
       current: file,
       streamingContent: "",
@@ -720,33 +722,54 @@ async function streamAssistantReply(
     let responseMeta: GeneratedBy["response_meta"] = {};
     const accumulatedLogprobs: TokenLogprob[] = [];
 
-    await ollamaChat(
-      {
-        model: file.session.model,
-        messages,
-        stream: true,
-        options,
-        ...(logprobsEnabled ? { logprobs: true, top_logprobs: 5 } : {}),
-        ...(formatParam !== undefined ? { format: formatParam } : {}),
-      },
-      (ev) => {
-        if (ev.kind === "delta") {
-          assistantText += ev.content;
-          if (ev.logprobs) accumulatedLogprobs.push(...ev.logprobs);
-          set({ streamingContent: assistantText });
-        } else if (ev.kind === "done") {
-          responseMeta = {
-            prompt_eval_count: ev.prompt_eval_count ?? undefined,
-            eval_count: ev.eval_count ?? undefined,
-            prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
-            eval_duration_ns: ev.eval_duration_ns ?? undefined,
-            total_duration_ns: ev.total_duration_ns ?? undefined,
-          };
-        } else if (ev.kind === "error") {
-          set({ sendError: { message: ev.message } });
-        }
-      },
-    );
+    const provider = file.session.provider ?? "ollama";
+
+    const handleEvent = (ev: { kind: string; content?: string; message?: string; logprobs?: TokenLogprob[] | null; prompt_eval_count?: number | null; eval_count?: number | null; prompt_eval_duration_ns?: number | null; eval_duration_ns?: number | null; total_duration_ns?: number | null }) => {
+      if (ev.kind === "delta") {
+        assistantText += ev.content ?? "";
+        if (ev.logprobs) accumulatedLogprobs.push(...ev.logprobs);
+        set({ streamingContent: assistantText });
+      } else if (ev.kind === "done") {
+        responseMeta = {
+          prompt_eval_count: ev.prompt_eval_count ?? undefined,
+          eval_count: ev.eval_count ?? undefined,
+          prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
+          eval_duration_ns: ev.eval_duration_ns ?? undefined,
+          total_duration_ns: ev.total_duration_ns ?? undefined,
+        };
+      } else if (ev.kind === "error") {
+        set({ sendError: { message: ev.message ?? "unknown error" } });
+      }
+    };
+
+    if (provider !== "ollama") {
+      // Use provider-agnostic llmChat for non-Ollama providers
+      await llmChat(
+        provider,
+        file.session.model,
+        messages.map((m) => ({ role: m.role, content: m.content })),
+        {
+          temperature: options.temperature,
+          top_p: options.top_p,
+          max_tokens: options.num_ctx,
+          seed: options.seed,
+        },
+        handleEvent,
+      );
+    } else {
+      // Ollama path: supports format/logprobs
+      await ollamaChat(
+        {
+          model: file.session.model,
+          messages,
+          stream: true,
+          options,
+          ...(logprobsEnabled ? { logprobs: true, top_logprobs: 5 } : {}),
+          ...(formatParam !== undefined ? { format: formatParam } : {}),
+        },
+        handleEvent,
+      );
+    }
 
     const generated_by: GeneratedBy = {
       endpoint: file.session.default_endpoint,

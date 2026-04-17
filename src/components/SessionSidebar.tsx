@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ConfirmModal } from "./ConfirmModal";
-import { promptList, type PromptEntry } from "../lib/ipc";
+import {
+  llmListModels,
+  promptList,
+  type PromptEntry,
+  type ProviderModelInfo,
+} from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
 export function SessionSidebar() {
@@ -18,6 +23,8 @@ export function SessionSidebar() {
   const [newModel, setNewModel] = useState("");
   const [newSystem, setNewSystem] = useState("You are a helpful assistant.");
   const [newLimit, setNewLimit] = useState<string>("");
+  const [newProvider, setNewProvider] = useState("ollama");
+  const [providerModels, setProviderModels] = useState<ProviderModelInfo[]>([]);
   const setContextLimit = useLoom((s) => s.setContextLimit);
   const [prompts, setPrompts] = useState<PromptEntry[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
@@ -59,14 +66,29 @@ export function SessionSidebar() {
 
   const beginCreate = () => {
     setNewTitle("untitled");
+    setNewProvider("ollama");
     setNewModel(models[0]?.name ?? "");
     setNewLimit("");
     setCreating(true);
   };
 
+  const switchProvider = (pid: string) => {
+    setNewProvider(pid);
+    if (pid === "ollama") {
+      setNewModel(models[0]?.name ?? "");
+    } else {
+      llmListModels(pid)
+        .then((m) => {
+          setProviderModels(m);
+          setNewModel(m[0]?.id ?? "");
+        })
+        .catch(() => setProviderModels([]));
+    }
+  };
+
   const confirmCreate = async () => {
     if (!newModel) return;
-    await createSession(newTitle || "untitled", newModel, newSystem);
+    await createSession(newTitle || "untitled", newModel, newSystem, newProvider);
     const parsed = newLimit.trim() === "" ? null : Number(newLimit);
     if (parsed != null && Number.isFinite(parsed) && parsed > 0) {
       await setContextLimit(Math.floor(parsed));
@@ -140,24 +162,47 @@ export function SessionSidebar() {
             />
           </label>
           <label className="field">
+            <span>Provider</span>
+            <select
+              value={newProvider}
+              onChange={(e) => switchProvider(e.target.value)}
+            >
+              <option value="ollama">Ollama (local)</option>
+              <option value="anthropic">Anthropic Claude</option>
+            </select>
+          </label>
+          <label className="field">
             <span>Model</span>
-            {modelsLoading ? (
-              <span className="loading-pulse muted">loading models...</span>
-            ) : models.length === 0 ? (
-              <span className="empty-hint">
-                no models found — run <code>ollama pull llama3.1:8b</code>
-              </span>
+            {newProvider === "ollama" ? (
+              modelsLoading ? (
+                <span className="loading-pulse muted">loading models...</span>
+              ) : models.length === 0 ? (
+                <span className="empty-hint">
+                  no models found — run <code>ollama pull llama3.1:8b</code>
+                </span>
+              ) : (
+                <select
+                  value={newModel}
+                  onChange={(e) => setNewModel(e.target.value)}
+                >
+                  {models.map((m) => (
+                    <option key={m.name} value={m.name}>
+                      {m.name}
+                      {m.details?.parameter_size
+                        ? ` - ${m.details.parameter_size}`
+                        : ""}
+                    </option>
+                  ))}
+              </select>
+              )
             ) : (
               <select
                 value={newModel}
                 onChange={(e) => setNewModel(e.target.value)}
               >
-                {models.map((m) => (
-                  <option key={m.name} value={m.name}>
+                {providerModels.map((m) => (
+                  <option key={m.id} value={m.id}>
                     {m.name}
-                    {m.details?.parameter_size
-                      ? ` - ${m.details.parameter_size}`
-                      : ""}
                   </option>
                 ))}
               </select>
@@ -230,7 +275,7 @@ export function SessionSidebar() {
             >
               <div className="session-title">{s.title}</div>
               <div className="session-meta">
-                {s.model} · {s.turn_count} turns
+                {s.provider && s.provider !== "ollama" ? `${s.provider}/` : ""}{s.model} · {s.turn_count} turns
                 {s.branch_count > 1 ? ` · ${s.branch_count} branches` : ""}
               </div>
               {(s.tags ?? []).length > 0 && (

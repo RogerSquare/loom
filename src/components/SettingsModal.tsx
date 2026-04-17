@@ -162,6 +162,29 @@ export function SettingsModal({ onClose }: Props) {
               <option value="system">system (auto)</option>
             </select>
           </label>
+
+          <fieldset className="settings-group">
+            <legend>API Keys</legend>
+            <label className="field">
+              <span>Anthropic</span>
+              <input
+                type="password"
+                placeholder="sk-ant-..."
+                value={settings.api_keys?.anthropic ?? ""}
+                onChange={(e) =>
+                  update({
+                    api_keys: {
+                      ...settings.api_keys,
+                      anthropic: e.target.value,
+                    },
+                  })
+                }
+              />
+              <small className="muted">
+                required for Claude models. Get a key at console.anthropic.com
+              </small>
+            </label>
+          </fieldset>
         </div>
 
         <footer>

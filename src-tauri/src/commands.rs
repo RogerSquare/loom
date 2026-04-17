@@ -299,6 +299,7 @@ pub async fn session_create(
     title: String,
     model: String,
     system_prompt: Option<String>,
+    provider: Option<String>,
 ) -> Result<SessionFile> {
     let dir = sessions_dir(&app)?;
     let now = now_iso();
@@ -340,6 +341,7 @@ pub async fn session_create(
             context_limit: None,
             default_seed: None,
             tags: vec![],
+            provider: provider.unwrap_or_else(|| "ollama".to_string()),
         },
         turns: Default::default(),
         branches: Default::default(),

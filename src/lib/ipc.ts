@@ -118,6 +118,7 @@ export interface Session {
   context_limit?: number;
   default_seed?: number;
   tags?: string[];
+  provider?: string;
 }
 
 export interface SessionFile {
@@ -136,6 +137,7 @@ export interface SessionSummary {
   turn_count: number;
   branch_count: number;
   tags?: string[];
+  provider?: string;
 }
 
 // ───────────────────────────── Ollama ─────────────────────────────
@@ -183,8 +185,14 @@ export const sessionCreate = (
   title: string,
   model: string,
   systemPrompt?: string,
+  provider?: string,
 ): Promise<SessionFile> =>
-  invoke("session_create", { title, model, systemPrompt: systemPrompt ?? null });
+  invoke("session_create", {
+    title,
+    model,
+    systemPrompt: systemPrompt ?? null,
+    provider: provider ?? null,
+  });
 
 export const sessionSave = (file: SessionFile): Promise<void> =>
   invoke("session_save", { file });
@@ -269,6 +277,41 @@ export const sessionSetModel = (
 ): Promise<SessionFile> =>
   invoke("session_set_model", { sessionId: session_id, model });
 
+// ───────────────────────────── Provider-agnostic LLM ─────────────────────────
+
+export interface ProviderModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  parameter_size?: string;
+}
+
+export async function llmChat(
+  providerId: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  options: Record<string, unknown>,
+  onEvent: (ev: StreamEvent) => void,
+): Promise<void> {
+  const channel = new Channel<StreamEvent>();
+  channel.onmessage = onEvent;
+  await invoke("llm_chat", {
+    providerId,
+    model,
+    messages,
+    options,
+    onChunk: channel,
+  });
+}
+
+export const llmListModels = (providerId: string): Promise<ProviderModelInfo[]> =>
+  invoke("llm_list_models", { providerId });
+
+export const llmListProviders = (): Promise<[string, string][]> =>
+  invoke("llm_list_providers");
+
+// ───────────────────────────── Garak ──────────────────────────────────────
+
 export type GarakEvent =
   | { kind: "stdout"; line: string }
   | { kind: "stderr"; line: string }
@@ -286,6 +329,7 @@ export interface AppSettings {
   default_context_limit?: number;
   theme: string;
   first_run_done: boolean;
+  api_keys?: Record<string, string>;
 }
 
 export const settingsLoad = (): Promise<AppSettings> => invoke("settings_load");

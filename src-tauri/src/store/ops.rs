@@ -214,6 +214,7 @@ mod tests {
                 context_limit: None,
                 default_seed: None,
                 tags: vec![],
+                provider: "ollama".to_string(),
             },
             turns,
             branches,
