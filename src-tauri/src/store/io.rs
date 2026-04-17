@@ -92,6 +92,7 @@ pub fn list_sessions(dir: &Path) -> Result<Vec<SessionSummary>> {
                 turn_count: file.turns.len(),
                 branch_count: file.branches.len(),
                 tags: file.session.tags,
+                provider: file.session.provider,
             });
         }
     }
@@ -152,6 +153,7 @@ mod tests {
                 context_limit: None,
                 default_seed: None,
                 tags: vec![],
+                provider: "ollama".to_string(),
             },
             turns,
             branches,
