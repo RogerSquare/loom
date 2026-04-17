@@ -1024,6 +1024,72 @@ html,
   width: 100%;
 }
 
+/* ─── Welcome + shortcuts modals ─────────────────────────────── */
+
+.welcome-panel {
+  width: min(560px, 90vw);
+  max-height: 90vh;
+}
+
+.welcome-body {
+  padding: 1.2rem 1.5rem;
+  overflow-y: auto;
+  line-height: 1.6;
+}
+
+.welcome-body h4 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.welcome-body ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.welcome-body li {
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.shortcuts-panel {
+  width: min(500px, 90vw);
+  max-height: 90vh;
+}
+
+.shortcuts-body {
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+}
+
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shortcuts-table td {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-table td:first-child {
+  white-space: nowrap;
+  width: 1%;
+}
+
+kbd {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--fg);
+}
+
 .garak-report code {
   font-family: "SF Mono", Consolas, monospace;
   font-size: 0.75rem;
