@@ -1,18 +1,32 @@
 :root {
   color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --bg: #151515;
-  --bg-1: #1c1c1c;
-  --bg-2: #232323;
-  --bg-3: #2a2a2a;
-  --border: #333;
-  --fg: #e8e8e8;
-  --muted: #aaa;
-  --dim: #555;
-  --accent: #6aa9e0;
-  --danger: #e88;
+
+  /* ── Apple HIG dark semantic colors ── */
+  --bg: #000000;
+  --bg-1: #1C1C1E;
+  --bg-2: #2C2C2E;
+  --bg-3: #3A3A3C;
+  --border: #38383A;
+  --fg: #FFFFFF;
+  --muted: rgba(235, 235, 245, 0.6);
+  --dim: rgba(235, 235, 245, 0.3);
+  --accent: #0A84FF;
+  --danger: #FF453A;
+  --system-green: #30D158;
+  --system-orange: #FF9F0A;
   --overlay-bg: rgba(0, 0, 0, 0.5);
   --shadow-color: rgba(0, 0, 0, 0.4);
+
+  /* ── Apple HIG type scale ── */
+  --type-title: 600 22px/28px;
+  --type-headline: 600 17px/22px;
+  --type-body: 400 17px/22px;
+  --type-callout: 400 16px/20px;
+  --type-subhead: 400 15px/19px;
+  --type-footnote: 400 13px/16px;
+  --type-caption: 400 11px/14px;
+
   background: var(--bg);
   color: var(--fg);
 }
@@ -21,16 +35,18 @@
 
 :root.light {
   color-scheme: light;
-  --bg: #f5f5f7;
-  --bg-1: #ffffff;
-  --bg-2: #f0f0f2;
-  --bg-3: #e5e5ea;
-  --border: #d1d1d6;
-  --fg: #1d1d1f;
-  --muted: #6e6e73;
-  --dim: #aeaeb2;
-  --accent: #0071e3;
-  --danger: #ff3b30;
+  --bg: #FFFFFF;
+  --bg-1: #FFFFFF;
+  --bg-2: #F2F2F7;
+  --bg-3: #E5E5EA;
+  --border: #C6C6C8;
+  --fg: #000000;
+  --muted: rgba(60, 60, 67, 0.6);
+  --dim: rgba(60, 60, 67, 0.3);
+  --accent: #007AFF;
+  --danger: #FF3B30;
+  --system-green: #34C759;
+  --system-orange: #FF9500;
   --overlay-bg: rgba(0, 0, 0, 0.25);
   --shadow-color: rgba(0, 0, 0, 0.1);
 }
@@ -38,16 +54,18 @@
 @media (prefers-color-scheme: light) {
   :root:not(.dark) {
     color-scheme: light;
-    --bg: #f5f5f7;
-    --bg-1: #ffffff;
-    --bg-2: #f0f0f2;
-    --bg-3: #e5e5ea;
-    --border: #d1d1d6;
-    --fg: #1d1d1f;
-    --muted: #6e6e73;
-    --dim: #aeaeb2;
-    --accent: #0071e3;
-    --danger: #ff3b30;
+    --bg: #FFFFFF;
+    --bg-1: #FFFFFF;
+    --bg-2: #F2F2F7;
+    --bg-3: #E5E5EA;
+    --border: #C6C6C8;
+    --fg: #000000;
+    --muted: rgba(60, 60, 67, 0.6);
+    --dim: rgba(60, 60, 67, 0.3);
+    --accent: #007AFF;
+    --danger: #FF3B30;
+    --system-green: #34C759;
+    --system-orange: #FF9500;
     --overlay-bg: rgba(0, 0, 0, 0.25);
     --shadow-color: rgba(0, 0, 0, 0.1);
   }
@@ -80,8 +98,8 @@ html,
 .hamburger {
   display: none;
   position: fixed;
-  top: 0.6rem;
-  left: 0.6rem;
+  top: 8px;
+  left: 8px;
   z-index: 200;
   background: var(--bg-2);
   border: 1px solid var(--border);
@@ -105,11 +123,23 @@ html,
   overflow: hidden;
 }
 
+@supports (backdrop-filter: blur(1px)) {
+  .sidebar {
+    background: rgba(28, 28, 30, 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  :root.light .sidebar {
+    background: rgba(255, 255, 255, 0.8);
+  }
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -138,28 +168,31 @@ html,
 }
 
 .create-panel {
-  padding: 1rem;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 8px;
   background: var(--bg-2);
 }
 
 .session-list {
   list-style: none;
   margin: 0;
-  padding: 0.5rem 0;
+  padding: 8px 0;
   overflow-y: auto;
   flex: 1;
 }
 
 .session-row {
   position: relative;
-  padding: 0.6rem 1rem;
+  padding: 8px 20px;
   cursor: pointer;
   border-left: 2px solid transparent;
-  transition: background 0.2s ease-out, border-color 0.2s ease-out;
+
+  min-height: 36px;
+  transition: background 0.15s, border-color 0.15s;
+
 }
 
 .session-row:hover {
@@ -176,19 +209,22 @@ html,
 }
 
 .session-title {
-  font-size: 0.9rem;
+  font-size: 15px;
+  line-height: 19px;
 }
 
 .session-meta {
-  font-size: 0.7rem;
+  font-size: 11px;
+  line-height: 14px;
   color: var(--muted);
   font-family: "SF Mono", Consolas, monospace;
   margin-top: 2px;
+  letter-spacing: 0.02em;
 }
 
 .delete-button {
   position: absolute;
-  right: 0.6rem;
+  right: 8px;
   top: 50%;
   transform: translateY(-50%);
   background: transparent;
@@ -206,8 +242,8 @@ html,
 
 .empty {
   color: var(--dim);
-  font-size: 0.8rem;
-  padding: 1rem;
+  font-size: 13px;
+  padding: 16px 20px;
   text-align: center;
 }
 
@@ -215,7 +251,7 @@ html,
 
 .sidebar-search {
   position: relative;
-  padding: 0.5rem 0.8rem;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -223,10 +259,10 @@ html,
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 8px;
   color: var(--fg);
-  padding: 0.35rem 1.8rem 0.35rem 0.5rem;
-  font-size: 0.8rem;
+  padding: 6px 32px 6px 8px;
+  font-size: 13px;
 }
 
 .sidebar-search input::placeholder {
@@ -254,7 +290,7 @@ html,
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding: 0.35rem 0.8rem;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -407,13 +443,13 @@ html,
 }
 
 .session-header {
-  padding: 1rem 1.5rem;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-1);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 16px;
 }
 
 .header-action {
@@ -436,14 +472,13 @@ html,
 
 .session-header h2 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 500;
+  font: var(--type-title);
   cursor: text;
 }
 
 .title-edit {
-  font-size: 1.2rem;
-  font-weight: 500;
+  font-size: 22px;
+  font-weight: 600;
   background: var(--bg-2);
   color: var(--fg);
   border: 1px solid var(--accent);
@@ -641,7 +676,8 @@ html,
 
 .session-sub {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 13px;
+  line-height: 16px;
   font-family: "SF Mono", Consolas, monospace;
 }
 
@@ -653,7 +689,7 @@ html,
 
 .banner.error {
   background: #2a1a1a;
-  border-bottom: 1px solid #c44;
+  border-bottom: 1px solid var(--danger);
   color: var(--danger);
 }
 
@@ -668,7 +704,7 @@ html,
 .branch-tabs {
   display: flex;
   gap: 4px;
-  padding: 0.4rem 1rem;
+  padding: 8px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
@@ -719,16 +755,16 @@ html,
 .timeline {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 12px;
 }
 
 .turn {
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  padding: 12px 16px;
   background: var(--bg-1);
   animation: fadeSlideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   transition: opacity 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
@@ -769,20 +805,21 @@ html,
 .turn-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  margin-bottom: 8px;
 }
 
 .role {
-  font-size: 0.7rem;
-  letter-spacing: 0.1em;
+  font-size: 11px;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .timestamp {
-  font-size: 0.7rem;
+  font-size: 11px;
   color: var(--dim);
   font-family: "SF Mono", Consolas, monospace;
+  letter-spacing: 0.02em;
 }
 
 .turn-body {
@@ -790,8 +827,9 @@ html,
   white-space: pre-wrap;
   word-wrap: break-word;
   font-family: inherit;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 17px;
+  line-height: 22px;
+  letter-spacing: -0.43px;
   color: var(--fg);
 }
 
@@ -949,7 +987,7 @@ html,
 
 .consistency-fill {
   height: 100%;
-  background: linear-gradient(90deg, #e88 0%, #d8c868 50%, #7ec488 100%);
+  background: linear-gradient(90deg, #FF453A 0%, #FFD60A 50%, #30D158 100%);
   border-radius: 3px;
   transition: width 0.3s;
 }
@@ -1358,14 +1396,14 @@ kbd {
   right: 0;
   background: var(--bg-1);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  padding: 12px;
   min-width: 200px;
   z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  gap: 8px;
+  box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .rerun-title {
@@ -1385,7 +1423,7 @@ kbd {
   font-size: 0.85rem;
   padding: 0.5rem 0.8rem;
   background: #2a1a1a;
-  border-left: 2px solid #c44;
+  border-left: 2px solid var(--danger);
   border-radius: 2px;
 }
 
@@ -1499,12 +1537,13 @@ kbd {
 .edit-panel {
   background: var(--bg-1);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 12px;
   width: min(800px, 90vw);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  box-shadow: 0 20px 60px var(--shadow-color);
 }
 
 .edit-panel header {
@@ -1554,22 +1593,22 @@ kbd {
 
 button.primary {
   border-color: var(--accent);
-  background: #2a4a6a;
-  color: var(--fg);
+  background: var(--accent);
+  color: #FFFFFF;
 }
 
 button.primary:hover:not(:disabled) {
-  background: #3a5a7a;
+  background: #0071E3;
 }
 
 button.danger {
-  border-color: #c44;
-  background: #4a2a2a;
-  color: var(--fg);
+  border-color: var(--danger);
+  background: rgba(255, 69, 58, 0.15);
+  color: var(--danger);
 }
 
 button.danger:hover:not(:disabled) {
-  background: #5a3a3a;
+  background: rgba(255, 69, 58, 0.25);
 }
 
 /* ─── Error boundary ──────────────────────────────────────────── */
@@ -1640,7 +1679,7 @@ button.danger:hover:not(:disabled) {
   font-family: "SF Mono", Consolas, monospace;
   font-size: 0.8rem;
   padding: 0.3rem 0;
-  border-left: 2px solid #c44;
+  border-left: 2px solid var(--danger);
   padding-left: 0.6rem;
 }
 
@@ -1760,12 +1799,12 @@ button.danger:hover:not(:disabled) {
   right: 0;
   background: var(--bg-1);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 8px;
   min-width: 280px;
   max-width: 400px;
   z-index: 50;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 24px var(--shadow-color);
 }
 
 .compare-menu-item {
@@ -1886,16 +1925,16 @@ button.danger:hover:not(:disabled) {
 .composer {
   border-top: 1px solid var(--border);
   background: var(--bg-1);
-  padding: 1rem 1.5rem;
+  padding: 16px 24px;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: 8px;
 }
 
 .composer-options {
   display: flex;
-  gap: 1rem;
-  font-size: 0.75rem;
+  gap: 16px;
+  font-size: 13px;
 }
 
 .composer-options label {
@@ -1952,14 +1991,14 @@ button.danger:hover:not(:disabled) {
 }
 
 .schema-editor.schema-invalid {
-  border-color: #c44;
+  border-color: var(--danger);
 }
 
 .composer-editor {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.2rem 0.8rem;
+  border-radius: 8px;
+  padding: 4px 12px;
   max-height: 40vh;
   overflow-y: auto;
 }
@@ -1984,7 +2023,7 @@ button.danger:hover:not(:disabled) {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 4px;
 }
 
 .field > span {
@@ -2000,10 +2039,10 @@ button.danger:hover:not(:disabled) {
   background: var(--bg-3);
   color: var(--fg);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  padding: 6px 8px;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 15px;
 }
 
 .field textarea {
@@ -2021,7 +2060,7 @@ button.danger:hover:not(:disabled) {
 
 .row {
   display: flex;
-  gap: 0.6rem;
+  gap: 8px;
   align-items: center;
 }
 
@@ -2029,10 +2068,11 @@ button {
   background: var(--bg-3);
   color: var(--fg);
   border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  padding: 6px 16px;
+  min-height: 32px;
   font-family: inherit;
-  font-size: 0.85rem;
+  font-size: 15px;
   cursor: pointer;
   transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out;
 }
@@ -2153,17 +2193,17 @@ button:disabled {
 }
 
 :root.light button.primary:hover:not(:disabled) {
-  background: #005bb5;
+  background: #0062CC;
 }
 
 :root.light button.danger {
-  background: #fef0f0;
-  border-color: #ff3b30;
-  color: #c62828;
+  background: rgba(255, 59, 48, 0.1);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 :root.light button.danger:hover:not(:disabled) {
-  background: #fddede;
+  background: rgba(255, 59, 48, 0.18);
 }
 
 :root.light .timeline .error {
