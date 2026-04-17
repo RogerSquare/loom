@@ -465,6 +465,7 @@ pub async fn garak_scan(
         &generations.to_string(),
     ])
     .env("PYTHONIOENCODING", "utf-8")
+    .env("TQDM_DISABLE", "1")
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
     .kill_on_drop(true);
