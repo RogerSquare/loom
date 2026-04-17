@@ -76,6 +76,14 @@ export interface ResponseMeta {
   prompt_eval_duration_ns?: number;
   eval_duration_ns?: number;
   total_duration_ns?: number;
+  ttft_ns?: number;
+  cached_tokens?: number;
+  reasoning_tokens?: number;
+  cost_usd?: number;
+  stop_reason?: string;
+  refusal_label?: string;
+  provider_id?: string;
+  model_id?: string;
 }
 
 export interface GeneratedBy {

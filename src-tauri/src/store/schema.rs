@@ -81,6 +81,40 @@ pub struct ResponseMeta {
     pub eval_duration_ns: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub total_duration_ns: Option<u64>,
+    /// Wall-clock time from request send to first content token (nanoseconds).
+    /// Provider-agnostic; populated via Instant::now() on the Rust side even
+    /// when the API itself does not report it.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub ttft_ns: Option<u64>,
+    /// Prompt-cache tokens (read + write combined). None when the provider
+    /// has no prompt-cache concept (e.g. Ollama).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub cached_tokens: Option<u32>,
+    /// Extended-thinking / reasoning token count. Separate from eval_count.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub reasoning_tokens: Option<u32>,
+    /// Derived cost for this turn in USD. None when the model is absent from
+    /// the pricing table (e.g. local Ollama models).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub cost_usd: Option<f64>,
+    /// Raw stop-reason string from the provider (done_reason / stop_reason /
+    /// finish_reason). Stored verbatim; no unified taxonomy.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub stop_reason: Option<String>,
+    /// Raw refusal / safety label string from the provider (e.g. Anthropic's
+    /// "refusal" stop_reason, OpenAI's choices[0].message.refusal). Null when
+    /// the response was not flagged.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub refusal_label: Option<String>,
+    /// Provider that produced this turn (e.g. "ollama", "anthropic", "openai").
+    /// Redundant with GeneratedBy.endpoint but denormalized here for cheap UI
+    /// lookup and branch roll-ups.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub provider_id: Option<String>,
+    /// Model id used for this turn (e.g. "claude-opus-4-7"). Redundant with
+    /// GeneratedBy.model but denormalized here for the same reason.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub model_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -178,5 +212,65 @@ mod tests {
         assert_eq!(json, "\"t_00000000000000000000000000\"");
         let back: TurnId = serde_json::from_str(&json).unwrap();
         assert_eq!(back, id);
+    }
+
+    #[test]
+    fn response_meta_legacy_shape_deserializes_with_new_fields_none() {
+        // Old on-disk ResponseMeta had only the 5 original fields; session
+        // files written before observability extension must still load.
+        let legacy = r#"{
+            "prompt_eval_count": 12,
+            "eval_count": 34,
+            "prompt_eval_duration_ns": 100,
+            "eval_duration_ns": 200,
+            "total_duration_ns": 300
+        }"#;
+        let meta: ResponseMeta = serde_json::from_str(legacy).unwrap();
+        assert_eq!(meta.prompt_eval_count, Some(12));
+        assert_eq!(meta.eval_count, Some(34));
+        assert!(meta.ttft_ns.is_none());
+        assert!(meta.cached_tokens.is_none());
+        assert!(meta.reasoning_tokens.is_none());
+        assert!(meta.cost_usd.is_none());
+        assert!(meta.stop_reason.is_none());
+        assert!(meta.refusal_label.is_none());
+        assert!(meta.provider_id.is_none());
+        assert!(meta.model_id.is_none());
+    }
+
+    #[test]
+    fn response_meta_full_shape_round_trips() {
+        let meta = ResponseMeta {
+            prompt_eval_count: Some(100),
+            eval_count: Some(50),
+            prompt_eval_duration_ns: Some(1_000_000),
+            eval_duration_ns: Some(2_000_000),
+            total_duration_ns: Some(3_000_000),
+            ttft_ns: Some(250_000),
+            cached_tokens: Some(20),
+            reasoning_tokens: Some(10),
+            cost_usd: Some(0.0042),
+            stop_reason: Some("end_turn".to_string()),
+            refusal_label: None,
+            provider_id: Some("anthropic".to_string()),
+            model_id: Some("claude-opus-4-7".to_string()),
+        };
+        let json = serde_json::to_string(&meta).unwrap();
+        let back: ResponseMeta = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.prompt_eval_count, meta.prompt_eval_count);
+        assert_eq!(back.ttft_ns, meta.ttft_ns);
+        assert_eq!(back.cost_usd, meta.cost_usd);
+        assert_eq!(back.provider_id, meta.provider_id);
+        assert_eq!(back.model_id, meta.model_id);
+        assert_eq!(back.stop_reason, meta.stop_reason);
+    }
+
+    #[test]
+    fn response_meta_empty_shape_deserializes() {
+        // Explicit "all None" case — earliest sessions may have no ResponseMeta.
+        let meta: ResponseMeta = serde_json::from_str("{}").unwrap();
+        assert!(meta.prompt_eval_count.is_none());
+        assert!(meta.ttft_ns.is_none());
+        assert!(meta.cost_usd.is_none());
     }
 }
