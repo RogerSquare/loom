@@ -52,6 +52,12 @@ export function Timeline() {
   return (
     <>
       <div className="timeline" ref={scrollRef}>
+        {timeline.length <= 1 && !streaming && (
+          <div className="timeline-empty">
+            <p>send your first message below to start the conversation.</p>
+            <p className="muted">edit any turn later to fork a new branch.</p>
+          </div>
+        )}
         {timeline.map((t) => (
           <TurnCard
             key={t.id}

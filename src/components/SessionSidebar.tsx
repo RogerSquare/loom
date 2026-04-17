@@ -5,14 +5,14 @@ import { promptList, type PromptEntry } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
 export function SessionSidebar() {
-  const {
-    sessions,
-    current,
-    models,
-    openSession,
-    createSession,
-    deleteSession,
-  } = useLoom();
+  const sessions = useLoom((s) => s.sessions);
+  const sessionsLoading = useLoom((s) => s.sessionsLoading);
+  const current = useLoom((s) => s.current);
+  const models = useLoom((s) => s.models);
+  const modelsLoading = useLoom((s) => s.modelsLoading);
+  const openSession = useLoom((s) => s.openSession);
+  const createSession = useLoom((s) => s.createSession);
+  const deleteSession = useLoom((s) => s.deleteSession);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newModel, setNewModel] = useState("");
@@ -64,19 +64,27 @@ export function SessionSidebar() {
           </label>
           <label className="field">
             <span>Model</span>
-            <select
-              value={newModel}
-              onChange={(e) => setNewModel(e.target.value)}
-            >
-              {models.map((m) => (
-                <option key={m.name} value={m.name}>
-                  {m.name}
-                  {m.details?.parameter_size
-                    ? ` · ${m.details.parameter_size}`
-                    : ""}
-                </option>
-              ))}
-            </select>
+            {modelsLoading ? (
+              <span className="loading-pulse muted">loading models…</span>
+            ) : models.length === 0 ? (
+              <span className="empty-hint">
+                no models found — run <code>ollama pull llama3.1:8b</code>
+              </span>
+            ) : (
+              <select
+                value={newModel}
+                onChange={(e) => setNewModel(e.target.value)}
+              >
+                {models.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                    {m.details?.parameter_size
+                      ? ` · ${m.details.parameter_size}`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            )}
           </label>
           <label className="field">
             <span>System prompt</span>
@@ -113,7 +121,7 @@ export function SessionSidebar() {
             />
           </label>
           <div className="row">
-            <button onClick={confirmCreate} disabled={!newModel}>
+            <button onClick={confirmCreate} disabled={!newModel || modelsLoading}>
               create
             </button>
             <button onClick={() => setCreating(false)}>cancel</button>
@@ -122,7 +130,10 @@ export function SessionSidebar() {
       )}
 
       <ul className="session-list">
-        {sessions.length === 0 && !creating && (
+        {sessionsLoading && sessions.length === 0 && (
+          <li className="empty loading-pulse">loading sessions…</li>
+        )}
+        {!sessionsLoading && sessions.length === 0 && !creating && (
           <li className="empty">no sessions yet — click + to start</li>
         )}
         {sessions.map((s) => {
