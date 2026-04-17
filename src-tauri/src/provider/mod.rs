@@ -1,3 +1,4 @@
+pub mod anthropic;
 pub mod ollama_provider;
 pub mod sse;
 
