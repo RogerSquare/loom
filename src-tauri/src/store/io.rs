@@ -22,7 +22,9 @@ fn bak_path(dir: &Path, id: &SessionId) -> PathBuf {
 
 pub fn read_session(path: &Path) -> Result<SessionFile> {
     let bytes = fs::read(path)?;
-    let file: SessionFile = serde_json::from_slice(&bytes)?;
+    let raw: serde_json::Value = serde_json::from_slice(&bytes)?;
+    let migrated = crate::store::migrate::migrate_if_needed(path, raw)?;
+    let file: SessionFile = serde_json::from_value(migrated)?;
     validator::validate(&file).map_err(|e| LoomError::Ollama(format!("validation: {e}")))?;
     Ok(file)
 }
