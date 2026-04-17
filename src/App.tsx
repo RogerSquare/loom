@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BranchTabs } from "./components/BranchTabs";
 import { CommitGraph } from "./components/CommitGraph";
 import { Composer } from "./components/Composer";
+import { ExportModal } from "./components/ExportModal";
 import { GarakModal } from "./components/GarakModal";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { Timeline } from "./components/Timeline";
@@ -18,6 +19,7 @@ function App() {
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
   const [garakOpen, setGarakOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -112,13 +114,22 @@ function App() {
                   {new Date(current.session.created_at).toLocaleString()}
                 </span>
               </div>
-              <button
-                className="header-action"
-                onClick={() => setGarakOpen(true)}
-                title="run garak red-team probes against the active model"
-              >
-                🛡 scan
-              </button>
+              <div className="row" style={{ gap: "0.4rem" }}>
+                <button
+                  className="header-action"
+                  onClick={() => setExportOpen(true)}
+                  title="export current branch as a runnable curl script"
+                >
+                  export
+                </button>
+                <button
+                  className="header-action"
+                  onClick={() => setGarakOpen(true)}
+                  title="run garak red-team probes against the active model"
+                >
+                  🛡 scan
+                </button>
+              </div>
             </header>
             <BranchTabs />
             <div className="session-body">
@@ -135,6 +146,9 @@ function App() {
         )}
       </main>
       {garakOpen && <GarakModal onClose={() => setGarakOpen(false)} />}
+      {exportOpen && current && (
+        <ExportModal file={current} onClose={() => setExportOpen(false)} />
+      )}
     </div>
   );
 }

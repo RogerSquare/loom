@@ -647,6 +647,26 @@ html,
 
 /* ─── Garak modal ───────────────────────────────────────────────── */
 
+.export-panel {
+  width: min(900px, 92vw);
+  max-height: 90vh;
+}
+
+.export-body {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 1rem;
+  background: #000;
+  color: #b8d8a8;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 60vh;
+}
+
 .garak-panel {
   width: min(960px, 92vw);
   max-height: 90vh;

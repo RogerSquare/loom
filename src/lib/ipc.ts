@@ -283,6 +283,48 @@ export async function garakCancel(): Promise<void> {
 
 // ───────────────────────────── Helpers ─────────────────────────────
 
+/** Generate a curl script that replays the branch chain against Ollama. */
+export function exportAsCurl(file: SessionFile, branchId?: string): string {
+  const chain = buildTimeline(file, branchId);
+  const model = file.session.model;
+  const endpoint = file.session.default_endpoint || "http://localhost:11434/api/chat";
+
+  const lines: string[] = [
+    "#!/usr/bin/env bash",
+    `# Loom session: ${file.session.title}`,
+    `# Branch: ${file.branches[branchId ?? file.head_branch]?.name ?? "main"}`,
+    `# Model: ${model}`,
+    `# Generated: ${new Date().toISOString()}`,
+    "",
+  ];
+
+  const messages: { role: string; content: string }[] = [];
+  for (const t of chain) {
+    messages.push({ role: t.role, content: t.content });
+    if (t.role === "assistant") continue;
+    if (t.role === "system" && messages.length === 1) continue;
+    const body = JSON.stringify({ model, messages: [...messages], stream: false });
+    lines.push(`# --- ${t.role}: ${t.content.slice(0, 60).replace(/\n/g, " ")} ---`);
+    lines.push(
+      `curl -s ${endpoint} \\`,
+      `  -H 'Content-Type: application/json' \\`,
+      `  -d '${body.replace(/'/g, "'\\''")}'`,
+      "",
+    );
+  }
+  // Final request with full chain
+  if (chain.length > 0 && chain[chain.length - 1].role !== "assistant") {
+    const body = JSON.stringify({ model, messages, stream: false });
+    lines.push("# --- final request ---");
+    lines.push(
+      `curl -s ${endpoint} \\`,
+      `  -H 'Content-Type: application/json' \\`,
+      `  -d '${body.replace(/'/g, "'\\''")}'`,
+    );
+  }
+  return lines.join("\n");
+}
+
 /** Turns with the same parent as `turnId`, excluding the turn itself. */
 export function findSiblings(file: SessionFile, turnId: string): Turn[] {
   const t = file.turns[turnId];
