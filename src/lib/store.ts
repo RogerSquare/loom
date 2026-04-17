@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import {
   branchCheckout,
+  branchFork,
   branchForkFromEdit,
   buildContextMessages,
   garakCancel,
@@ -110,6 +111,10 @@ interface LoomStore {
     newContent: string,
     opts: { regenerate: boolean; options?: ChatOptions },
   ) => Promise<void>;
+  rerunWithParams: (
+    assistantTurnId: string,
+    options: ChatOptions,
+  ) => Promise<void>;
   continueFromPrefill: (
     turnId: string,
     prefillText: string,
@@ -200,6 +205,35 @@ export const useLoom = create<LoomStore>((set, get) => ({
     );
     set({ current: afterUser });
     await streamAssistantReply(afterUser, options, set, get);
+  },
+
+  async rerunWithParams(assistantTurnId, options) {
+    const { current } = get();
+    if (!current) return;
+    const turn: Turn | undefined = current.turns[assistantTurnId];
+    if (!turn || !turn.parent) return;
+
+    try {
+      const afterFork = await branchFork(
+        current.session.id,
+        turn.parent,
+        `rerun-${Date.now().toString(36)}`,
+      );
+      const oldIds = new Set(Object.keys(current.branches));
+      const newBranchId = Object.keys(afterFork.branches).find(
+        (b) => !oldIds.has(b),
+      );
+      if (!newBranchId) return;
+
+      const afterCheckout = await branchCheckout(
+        afterFork.session.id,
+        newBranchId,
+      );
+      set({ current: afterCheckout });
+      await streamAssistantReply(afterCheckout, options, set, get);
+    } catch (e) {
+      set({ sendError: { message: String(e) } });
+    }
   },
 
   async forkFromEdit(turnId, newContent, opts) {

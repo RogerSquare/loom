@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { findSiblings, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 import { LogprobsBody } from "./LogprobsBody";
+import { RerunPopover } from "./RerunPopover";
 
 interface Props {
   turn: Turn;
@@ -44,6 +45,7 @@ export function TurnCard({
   const pinned = !!turn.pinned;
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
   const [thinkingOpen, setThinkingOpen] = useState(false);
+  const [rerunOpen, setRerunOpen] = useState(false);
 
   const copySeed = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -133,6 +135,23 @@ export function TurnCard({
                     </button>
                   ))}
                 </div>
+              )}
+            </div>
+          )}
+          {!streaming && turn.role === "assistant" && turn.parent && (
+            <div className="compare-menu-wrap">
+              <button
+                className="edit-button"
+                onClick={() => setRerunOpen((v) => !v)}
+                title="rerun with different sampling parameters"
+              >
+                rerun
+              </button>
+              {rerunOpen && (
+                <RerunPopover
+                  turn={turn}
+                  onClose={() => setRerunOpen(false)}
+                />
               )}
             </div>
           )}
