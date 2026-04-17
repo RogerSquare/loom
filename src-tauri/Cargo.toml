@@ -29,6 +29,7 @@ ulid = "1.2.1"
 futures = "0.3.32"
 reqwest = { version = "0.13.2", default-features = false, features = ["json", "stream"] }
 async-stream = "0.3.6"
+async-trait = "0.1"
 time = { version = "0.3.47", features = ["formatting", "macros"] }
 tauri-plugin-window-state = "2.4.1"
 

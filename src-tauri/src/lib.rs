@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod ollama;
+mod provider;
 mod store;
 
 use commands::LoomState;
