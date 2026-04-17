@@ -255,6 +255,22 @@ mod tests {
     }
 
     #[test]
+    fn rejects_corrupted_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.loom.json");
+        fs::write(&path, b"not valid json at all {{{").unwrap();
+        assert!(read_session(&path).is_err());
+    }
+
+    #[test]
+    fn rejects_valid_json_but_invalid_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad_schema.loom.json");
+        fs::write(&path, br#"{"loom_schema": 1, "session": {}, "turns": {}, "branches": {}, "head_branch": "nope"}"#).unwrap();
+        assert!(read_session(&path).is_err());
+    }
+
+    #[test]
     fn list_and_delete_roundtrip() {
         let dir = tempfile::tempdir().unwrap();
         let a = sample_file("sess_test_a");
