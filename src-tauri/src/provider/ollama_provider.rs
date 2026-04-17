@@ -120,6 +120,7 @@ impl Provider for OllamaProvider {
                         ttft_ns,
                         cached_tokens: None,
                         reasoning_tokens: None,
+                        cost_usd: None,
                         stop_reason: c.done_reason.clone(),
                         refusal_label: None,
                         provider_id: Some("ollama".to_string()),

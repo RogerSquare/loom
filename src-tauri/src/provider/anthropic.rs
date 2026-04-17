@@ -210,10 +210,15 @@ impl Provider for AnthropicProvider {
                                     if let Ok(ms) = serde_json::from_str::<MessageStart>(&sse_event.data) {
                                         if let Some(u) = ms.message.usage {
                                             input_tokens = u.input_tokens;
-                                            let cr = u.cache_read_input_tokens.unwrap_or(0);
-                                            let cc = u.cache_creation_input_tokens.unwrap_or(0);
-                                            if cr + cc > 0 {
-                                                cached_tokens = Some(cr + cc);
+                                            // cached_tokens = cache_read only.
+                                            // cache_creation has a different
+                                            // (higher) rate than cache_read, so
+                                            // folding both would mis-cost. For
+                                            // v1, ignore cache_creation.
+                                            if let Some(cr) = u.cache_read_input_tokens {
+                                                if cr > 0 {
+                                                    cached_tokens = Some(cr);
+                                                }
                                             }
                                         }
                                     }
@@ -237,12 +242,14 @@ impl Provider for AnthropicProvider {
                                             if let Some(ot) = u.output_tokens {
                                                 output_tokens = Some(ot);
                                             }
-                                            // message_delta can carry additional cached-read counts
-                                            // for long streams; accumulate.
-                                            let extra = u.cache_read_input_tokens.unwrap_or(0)
-                                                + u.cache_creation_input_tokens.unwrap_or(0);
-                                            if extra > 0 {
-                                                cached_tokens = Some(cached_tokens.unwrap_or(0) + extra);
+                                            // Same cache_read-only rule as
+                                            // message_start; cache_creation is
+                                            // deliberately ignored for v1.
+                                            if let Some(cr) = u.cache_read_input_tokens {
+                                                if cr > 0 {
+                                                    cached_tokens =
+                                                        Some(cached_tokens.unwrap_or(0) + cr);
+                                                }
                                             }
                                         }
                                         if let Some(d) = md.delta {
@@ -269,6 +276,7 @@ impl Provider for AnthropicProvider {
                                         ttft_ns,
                                         cached_tokens,
                                         reasoning_tokens: None,
+                                        cost_usd: None,
                                         stop_reason: stop_reason.clone(),
                                         refusal_label,
                                         provider_id: Some("anthropic".to_string()),

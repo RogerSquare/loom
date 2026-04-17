@@ -58,6 +58,7 @@ export type StreamEvent =
       ttft_ns?: number;
       cached_tokens?: number;
       reasoning_tokens?: number;
+      cost_usd?: number;
       stop_reason?: string;
       refusal_label?: string;
       provider_id?: string;

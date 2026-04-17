@@ -1,6 +1,7 @@
 mod commands;
 mod error;
 mod ollama;
+mod pricing;
 mod provider;
 mod store;
 

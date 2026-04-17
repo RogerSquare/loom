@@ -125,14 +125,17 @@ pub enum StreamEvent {
         eval_duration_ns: Option<u64>,
         total_duration_ns: Option<u64>,
         // Observability fields (feat-loom-043). All Option, populated where the
-        // provider surfaces them. Cost is NOT computed here — pricing lookup
-        // happens in the caller (see feat-loom-043 phase 3).
+        // provider surfaces them. cost_usd is derived — providers emit None;
+        // the command layer enriches with pricing before forwarding to the
+        // frontend.
         #[serde(skip_serializing_if = "Option::is_none")]
         ttft_ns: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         cached_tokens: Option<u32>,
         #[serde(skip_serializing_if = "Option::is_none")]
         reasoning_tokens: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cost_usd: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         stop_reason: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
