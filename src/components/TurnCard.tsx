@@ -111,6 +111,7 @@ export function TurnCard({
             <span className="swipe-controls">
               <button
                 className="swipe-arrow"
+                aria-label="previous sibling"
                 onClick={(e) => {
                   e.stopPropagation();
                   setSwipeOffset((o) => o - 1);
@@ -123,6 +124,7 @@ export function TurnCard({
               </span>
               <button
                 className="swipe-arrow"
+                aria-label="next sibling"
                 onClick={(e) => {
                   e.stopPropagation();
                   setSwipeOffset((o) => o + 1);
@@ -148,6 +150,7 @@ export function TurnCard({
               className="edit-button note-button"
               onClick={() => setAddingNote((v) => !v)}
               title="add a note to this turn"
+              aria-label="add note"
             >
               note
             </button>
@@ -157,6 +160,7 @@ export function TurnCard({
               className={pinned ? "pin-button pinned" : "pin-button"}
               onClick={togglePin}
               title={pinned ? "unpin (allow rolling out of context)" : "pin (always include in context)"}
+              aria-label={pinned ? "unpin turn" : "pin turn"}
             >
               {pinned ? "📌" : "📍"}
             </button>

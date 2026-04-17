@@ -47,7 +47,7 @@ export function SessionSidebar() {
     <aside className="sidebar">
       <header className="sidebar-header">
         <span className="brand">LOOM</span>
-        <button className="icon-button" onClick={beginCreate} title="New session">
+        <button className="icon-button" onClick={beginCreate} title="New session" aria-label="create new session">
           +
         </button>
       </header>
