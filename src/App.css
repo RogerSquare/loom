@@ -1492,6 +1492,10 @@ button.danger:hover:not(:disabled) {
   width: 100%;
 }
 
+.schema-editor.schema-invalid {
+  border-color: #c44;
+}
+
 .composer-editor {
   background: var(--bg-2);
   border: 1px solid var(--border);

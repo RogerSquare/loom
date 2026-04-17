@@ -20,6 +20,12 @@ pub enum LoomError {
 
     #[error("utf8 error: {0}")]
     Utf8(#[from] std::str::Utf8Error),
+
+    #[error("filesystem error: {0}")]
+    Filesystem(String),
+
+    #[error("validation error: {0}")]
+    Validation(String),
 }
 
 impl Serialize for LoomError {

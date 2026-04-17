@@ -52,6 +52,44 @@ impl Default for LoomState {
     }
 }
 
+/// Validate a string for use in shell arguments or filenames.
+/// Allows alphanumeric, hyphen, underscore, colon, dot, slash (for probe paths).
+fn validate_shell_safe(input: &str, label: &str) -> Result<()> {
+    if input.is_empty() {
+        return Err(LoomError::Validation(format!("{label} cannot be empty")));
+    }
+    if input.contains("..") || input.contains('\\') {
+        return Err(LoomError::Validation(format!(
+            "{label} contains invalid characters (.. or \\\\)"
+        )));
+    }
+    if !input
+        .chars()
+        .all(|c| c.is_alphanumeric() || "-_:./,".contains(c))
+    {
+        return Err(LoomError::Validation(format!(
+            "{label} contains invalid characters — allowed: alphanumeric, hyphen, underscore, colon, dot, slash, comma"
+        )));
+    }
+    Ok(())
+}
+
+/// Validate a prompt library name for safe filesystem use.
+fn validate_prompt_name(name: &str) -> Result<()> {
+    if name.is_empty() {
+        return Err(LoomError::Validation(
+            "prompt name cannot be empty".to_string(),
+        ));
+    }
+    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+        return Err(LoomError::Validation(format!(
+            "prompt name '{}' contains invalid characters — allowed: alphanumeric, hyphen, underscore",
+            name
+        )));
+    }
+    Ok(())
+}
+
 fn now_iso() -> String {
     OffsetDateTime::now_utc()
         .format(&Rfc3339)
@@ -62,7 +100,7 @@ fn sessions_dir(app: &AppHandle) -> Result<PathBuf> {
     let base = app
         .path()
         .app_data_dir()
-        .map_err(|e| LoomError::Ollama(format!("app_data_dir: {e}")))?;
+        .map_err(|e| LoomError::Filesystem(format!("app_data_dir: {e}")))?;
     let dir = base.join("sessions");
     Ok(dir)
 }
@@ -363,7 +401,7 @@ fn prompts_dir(app: &AppHandle) -> Result<PathBuf> {
     let base = app
         .path()
         .app_data_dir()
-        .map_err(|e| LoomError::Ollama(format!("app_data_dir: {e}")))?;
+        .map_err(|e| LoomError::Filesystem(format!("app_data_dir: {e}")))?;
     let dir = base.join("prompts");
     Ok(dir)
 }
@@ -400,6 +438,7 @@ pub async fn prompt_list(app: AppHandle) -> Result<Vec<PromptEntry>> {
 
 #[tauri::command]
 pub async fn prompt_save(app: AppHandle, name: String, content: String) -> Result<()> {
+    validate_prompt_name(&name)?;
     let dir = prompts_dir(&app)?;
     std::fs::create_dir_all(&dir).map_err(LoomError::Io)?;
     let path = dir.join(format!("{name}.md"));
@@ -409,6 +448,7 @@ pub async fn prompt_save(app: AppHandle, name: String, content: String) -> Resul
 
 #[tauri::command]
 pub async fn prompt_delete(app: AppHandle, name: String) -> Result<()> {
+    validate_prompt_name(&name)?;
     let dir = prompts_dir(&app)?;
     let path = dir.join(format!("{name}.md"));
     if path.exists() {
@@ -538,7 +578,9 @@ pub async fn garak_scan(
     generations: Option<u32>,
     on_event: Channel<GarakEvent>,
 ) -> Result<()> {
+    validate_shell_safe(&model, "model name")?;
     let probe_arg = probes.unwrap_or_else(|| "latentinjection".to_string());
+    validate_shell_safe(&probe_arg, "probe name")?;
     let generations = generations.unwrap_or(3);
 
     let chan = on_event.clone();

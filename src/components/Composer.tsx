@@ -31,6 +31,8 @@ export function Composer() {
   const setOutputFormat = useLoom((s) => s.setOutputFormat);
   const outputSchema = useLoom((s) => s.outputSchema);
   const setOutputSchema = useLoom((s) => s.setOutputSchema);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [rawJsonError, setRawJsonError] = useState<string | null>(null);
   const rawJsonMode = useLoom((s) => s.rawJsonMode);
   const setRawJsonMode = useLoom((s) => s.setRawJsonMode);
   const sendRawJson = useLoom((s) => s.sendRawJson);
@@ -191,30 +193,64 @@ export function Composer() {
         </label>
       </div>
       {outputFormat === "schema" && (
-        <textarea
-          className="schema-editor"
-          value={outputSchema}
-          onChange={(e) => setOutputSchema(e.target.value)}
-          placeholder='{"type": "object", "properties": { ... }}'
-          rows={3}
-        />
+        <>
+          <textarea
+            className={`schema-editor${schemaError ? " schema-invalid" : ""}`}
+            value={outputSchema}
+            onChange={(e) => {
+              setOutputSchema(e.target.value);
+              setSchemaError(null);
+            }}
+            onBlur={() => {
+              if (!outputSchema.trim()) return;
+              try {
+                JSON.parse(outputSchema);
+                setSchemaError(null);
+              } catch (e) {
+                setSchemaError(String(e));
+              }
+            }}
+            placeholder='{"type": "object", "properties": { ... }}'
+            rows={3}
+          />
+          {schemaError && (
+            <div className="composer-error">{schemaError}</div>
+          )}
+        </>
       )}
 
       <div className="composer-editor" onKeyDown={onKeyDown}>
         {rawJsonMode ? (
-          <CodeMirror
-            value={rawJson}
-            onChange={setRawJson}
-            extensions={jsonExtensions}
-            theme="dark"
-            placeholder="edit the outbound JSON request…"
-            basicSetup={{
-              lineNumbers: true,
-              foldGutter: true,
-              highlightActiveLine: true,
-              highlightActiveLineGutter: false,
-            }}
-          />
+          <>
+            <CodeMirror
+              value={rawJson}
+              onChange={(v) => {
+                setRawJson(v);
+                setRawJsonError(null);
+              }}
+              onBlur={() => {
+                if (!rawJson.trim()) return;
+                try {
+                  JSON.parse(rawJson);
+                  setRawJsonError(null);
+                } catch (e) {
+                  setRawJsonError(String(e));
+                }
+              }}
+              extensions={jsonExtensions}
+              theme="dark"
+              placeholder="edit the outbound JSON request…"
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                highlightActiveLine: true,
+                highlightActiveLineGutter: false,
+              }}
+            />
+            {rawJsonError && (
+              <div className="composer-error">{rawJsonError}</div>
+            )}
+          </>
         ) : (
           <CodeMirror
             value={content}
