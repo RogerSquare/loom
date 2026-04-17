@@ -31,10 +31,12 @@ export function EditPanel({ turn, onClose }: Props) {
     turn.role === "user" || turn.role === "system",
   );
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setContent(turn.content);
     setRegenerate(turn.role === "user" || turn.role === "system");
+    setError(null);
   }, [turn.id]);
 
   const canPrefill = turn.role === "assistant";
@@ -42,12 +44,15 @@ export function EditPanel({ turn, onClose }: Props) {
   const save = async () => {
     if (!content.trim() || busy || streaming) return;
     setBusy(true);
+    setError(null);
     try {
       await forkFromEdit(turn.id, content, {
         regenerate,
         options: { temperature: 0.7, top_p: 0.9, num_ctx: 8192 },
       });
       onClose();
+    } catch (e) {
+      setError(String(e));
     } finally {
       setBusy(false);
     }
@@ -56,9 +61,12 @@ export function EditPanel({ turn, onClose }: Props) {
   const continueHere = async () => {
     if (!content.trim() || busy || streaming) return;
     setBusy(true);
+    setError(null);
     try {
       await continueFromPrefill(turn.id, content);
       onClose();
+    } catch (e) {
+      setError(String(e));
     } finally {
       setBusy(false);
     }
@@ -89,6 +97,7 @@ export function EditPanel({ turn, onClose }: Props) {
             }}
           />
         </div>
+        {error && <div className="edit-panel-error error">{error}</div>}
         <footer>
           <label className="regen-toggle">
             <input

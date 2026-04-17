@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BranchTabs } from "./components/BranchTabs";
 import { CommitGraph } from "./components/CommitGraph";
 import { Composer } from "./components/Composer";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ExportModal } from "./components/ExportModal";
 import { GarakModal } from "./components/GarakModal";
 import { SessionSidebar } from "./components/SessionSidebar";
@@ -48,7 +49,9 @@ function App() {
 
   return (
     <div className="app">
-      <SessionSidebar />
+      <ErrorBoundary name="SessionSidebar">
+        <SessionSidebar />
+      </ErrorBoundary>
       <main className="main">
         {modelsError && (
           <div className="banner error">
@@ -131,12 +134,20 @@ function App() {
                 </button>
               </div>
             </header>
-            <BranchTabs />
+            <ErrorBoundary name="BranchTabs">
+              <BranchTabs />
+            </ErrorBoundary>
             <div className="session-body">
-              <Timeline />
-              <CommitGraph />
+              <ErrorBoundary name="Timeline">
+                <Timeline />
+              </ErrorBoundary>
+              <ErrorBoundary name="CommitGraph">
+                <CommitGraph />
+              </ErrorBoundary>
             </div>
-            <Composer />
+            <ErrorBoundary name="Composer">
+              <Composer />
+            </ErrorBoundary>
           </>
         ) : (
           <div className="empty-state">

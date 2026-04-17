@@ -24,6 +24,7 @@ export function Composer() {
   const sendMessage = useLoom((s) => s.sendMessage);
   const seedDraft = useLoom((s) => s.seedDraft);
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
+  const sendError = useLoom((s) => s.sendError);
   const logprobsEnabled = useLoom((s) => s.logprobsEnabled);
   const setLogprobsEnabled = useLoom((s) => s.setLogprobsEnabled);
   const outputFormat = useLoom((s) => s.outputFormat);
@@ -231,6 +232,9 @@ export function Composer() {
         )}
       </div>
 
+      {sendError && (
+        <div className="composer-error">error: {sendError.message}</div>
+      )}
       <div className="row composer-actions">
         <button
           onClick={send}

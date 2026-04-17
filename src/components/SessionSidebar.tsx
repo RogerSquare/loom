@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import { ConfirmModal } from "./ConfirmModal";
 import { promptList, type PromptEntry } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
@@ -19,6 +20,7 @@ export function SessionSidebar() {
   const [newLimit, setNewLimit] = useState<string>("");
   const setContextLimit = useLoom((s) => s.setContextLimit);
   const [prompts, setPrompts] = useState<PromptEntry[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     promptList().then(setPrompts).catch(() => {});
@@ -140,7 +142,7 @@ export function SessionSidebar() {
                 className="delete-button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (confirm(`Delete "${s.title}"?`)) deleteSession(s.id);
+                  setDeleteTarget({ id: s.id, title: s.title });
                 }}
                 title="Delete"
               >
@@ -150,6 +152,19 @@ export function SessionSidebar() {
           );
         })}
       </ul>
+      {deleteTarget && (
+        <ConfirmModal
+          title="delete session"
+          message={`Permanently delete "${deleteTarget.title}"? This cannot be undone.`}
+          confirmLabel="delete"
+          danger
+          onConfirm={() => {
+            deleteSession(deleteTarget.id);
+            setDeleteTarget(null);
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
     </aside>
   );
 }
