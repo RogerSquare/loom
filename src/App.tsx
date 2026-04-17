@@ -21,6 +21,8 @@ function App() {
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
   const [garakOpen, setGarakOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [graphVisible, setGraphVisible] = useState(true);
 
   useEffect(() => {
     refresh();
@@ -48,10 +50,19 @@ function App() {
   };
 
   return (
-    <div className="app">
-      <ErrorBoundary name="SessionSidebar">
-        <SessionSidebar />
-      </ErrorBoundary>
+    <div className={`app${sidebarOpen ? "" : " sidebar-collapsed"}`}>
+      <button
+        className="hamburger"
+        onClick={() => setSidebarOpen((v) => !v)}
+        aria-label={sidebarOpen ? "close sidebar" : "open sidebar"}
+      >
+        {sidebarOpen ? "✕" : "☰"}
+      </button>
+      {sidebarOpen && (
+        <ErrorBoundary name="SessionSidebar">
+          <SessionSidebar />
+        </ErrorBoundary>
+      )}
       <main className="main">
         {modelsError && (
           <div className="banner error">
@@ -119,6 +130,14 @@ function App() {
               </div>
               <div className="row" style={{ gap: "0.4rem" }}>
                 <button
+                  className={`header-action${graphVisible ? " toggle-active" : ""}`}
+                  onClick={() => setGraphVisible((v) => !v)}
+                  title={graphVisible ? "hide commit graph" : "show commit graph"}
+                  aria-label="toggle commit graph"
+                >
+                  graph
+                </button>
+                <button
                   className="header-action"
                   onClick={() => setExportOpen(true)}
                   title="export current branch as a runnable curl script"
@@ -141,9 +160,11 @@ function App() {
               <ErrorBoundary name="Timeline">
                 <Timeline />
               </ErrorBoundary>
-              <ErrorBoundary name="CommitGraph">
-                <CommitGraph />
-              </ErrorBoundary>
+              {graphVisible && (
+                <ErrorBoundary name="CommitGraph">
+                  <CommitGraph />
+                </ErrorBoundary>
+              )}
             </div>
             <ErrorBoundary name="Composer">
               <Composer />

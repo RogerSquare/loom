@@ -32,6 +32,29 @@ html,
   display: grid;
   grid-template-columns: 260px 1fr;
   height: 100vh;
+  position: relative;
+}
+
+.app.sidebar-collapsed {
+  grid-template-columns: 1fr;
+}
+
+.hamburger {
+  display: none;
+  position: fixed;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 200;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ─── Sidebar ─────────────────────────────────────────────────── */
@@ -1635,4 +1658,112 @@ button:hover:not(:disabled) {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ─── Responsive breakpoints ──────────────────────────────────── */
+
+/* Tablet / small desktop: hide graph by default, show hamburger */
+@media (max-width: 1024px) {
+  .commit-graph {
+    display: none;
+  }
+
+  .session-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile / narrow: collapsible sidebar */
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .app:not(.sidebar-collapsed) {
+    grid-template-columns: 260px 1fr;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 260px;
+    z-index: 150;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar-header {
+    padding-left: 3rem;
+  }
+
+  .edit-panel {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+
+  .diff-panel,
+  .sweep-panel,
+  .garak-panel,
+  .judge-panel,
+  .export-panel,
+  .diff-matrix-panel {
+    width: 95vw !important;
+    max-width: 95vw !important;
+  }
+
+  .composer-options {
+    flex-wrap: wrap;
+  }
+}
+
+/* Small phone */
+@media (max-width: 375px) {
+  .session-header {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .session-header h2 {
+    font-size: 1rem;
+  }
+
+  .composer-options label {
+    flex: 1 1 45%;
+  }
+
+  .branch-tabs {
+    flex-wrap: wrap;
+  }
+}
+
+/* Touch targets: ensure minimum 44px on touch devices */
+@media (pointer: coarse) {
+  .edit-button,
+  .pin-button,
+  .note-button,
+  .delete-button,
+  .icon-button,
+  .branch-tab {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .swipe-arrow {
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+
+  .session-row {
+    min-height: 56px;
+    padding: 0.8rem 1rem;
+  }
 }
