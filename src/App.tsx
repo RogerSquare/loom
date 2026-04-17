@@ -18,11 +18,15 @@ import "./App.css";
 function App() {
   const refresh = useLoom((s) => s.refresh);
   const current = useLoom((s) => s.current);
+  const models = useLoom((s) => s.models);
   const modelsError = useLoom((s) => s.modelsError);
   const renameSession = useLoom((s) => s.renameSession);
   const setContextLimit = useLoom((s) => s.setContextLimit);
+  const setSessionModel = useLoom((s) => s.setSessionModel);
+  const setSessionTags = useLoom((s) => s.setSessionTags);
   const [titleDraft, setTitleDraft] = useState<string | null>(null);
   const [limitDraft, setLimitDraft] = useState<string | null>(null);
+  const [tagDraft, setTagDraft] = useState("");
   const [garakOpen, setGarakOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -87,6 +91,25 @@ function App() {
     setLimitDraft(null);
   };
 
+  const addTag = () => {
+    if (!current || !tagDraft.trim()) return;
+    const existing = current.session.tags ?? [];
+    const tag = tagDraft.trim().toLowerCase();
+    if (!existing.includes(tag)) {
+      setSessionTags([...existing, tag]);
+    }
+    setTagDraft("");
+  };
+
+  const removeTag = (tag: string) => {
+    if (!current) return;
+    setSessionTags((current.session.tags ?? []).filter((t) => t !== tag));
+  };
+
+  // Check if the current model exists in the available models list
+  const currentModelExists =
+    current && models.some((m) => m.name === current.session.model);
+
   return (
     <div className={`app${sidebarOpen ? "" : " sidebar-collapsed"}`}>
       <button
@@ -94,7 +117,7 @@ function App() {
         onClick={() => setSidebarOpen((v) => !v)}
         aria-label={sidebarOpen ? "close sidebar" : "open sidebar"}
       >
-        {sidebarOpen ? "✕" : "☰"}
+        {sidebarOpen ? "\u2715" : "\u2630"}
       </button>
       {sidebarOpen && (
         <ErrorBoundary name="SessionSidebar">
@@ -162,9 +185,66 @@ function App() {
                       }}
                     />
                   )}
-                  {" · "}created{" "}
-                  {new Date(current.session.created_at).toLocaleString()}
+                  {" · "}model:{" "}
+                  <select
+                    className="model-switcher"
+                    value={current.session.model}
+                    onChange={(e) => setSessionModel(e.target.value)}
+                    title="switch model for this session"
+                  >
+                    {/* Always include current model even if not in list */}
+                    {!currentModelExists && (
+                      <option value={current.session.model}>
+                        {current.session.model} (not found)
+                      </option>
+                    )}
+                    {models.map((m) => (
+                      <option key={m.name} value={m.name}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
                 </span>
+                {/* Model not found hint */}
+                {!currentModelExists && models.length > 0 && (
+                  <div className="model-missing-hint">
+                    model not available locally — run{" "}
+                    <code
+                      className="copy-hint"
+                      onClick={() =>
+                        navigator.clipboard.writeText(
+                          `ollama pull ${current.session.model}`,
+                        )
+                      }
+                      title="click to copy"
+                    >
+                      ollama pull {current.session.model}
+                    </code>
+                  </div>
+                )}
+                {/* Session tags */}
+                <div className="session-tag-editor">
+                  {(current.session.tags ?? []).map((t) => (
+                    <span key={t} className="tag-badge removable">
+                      {t}
+                      <button onClick={() => removeTag(t)} aria-label={`remove tag ${t}`}>
+                        x
+                      </button>
+                    </span>
+                  ))}
+                  <input
+                    className="tag-input"
+                    placeholder="+ tag"
+                    value={tagDraft}
+                    onChange={(e) => setTagDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addTag();
+                    }}
+                    onBlur={() => {
+                      if (tagDraft.trim()) addTag();
+                    }}
+                  />
+                </div>
               </div>
               <div className="row" style={{ gap: "0.4rem" }}>
                 <button
@@ -187,7 +267,7 @@ function App() {
                   onClick={() => setGarakOpen(true)}
                   title="run garak red-team probes against the active model"
                 >
-                  🛡 scan
+                  scan
                 </button>
               </div>
             </header>

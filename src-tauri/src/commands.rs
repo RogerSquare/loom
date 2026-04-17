@@ -229,6 +229,7 @@ pub async fn session_create(
             default_endpoint: "http://localhost:11434/api/chat".to_string(),
             context_limit: None,
             default_seed: None,
+            tags: vec![],
         },
         turns: Default::default(),
         branches: Default::default(),
@@ -255,6 +256,14 @@ pub async fn turn_append(
 ) -> Result<SessionFile> {
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
+
+    if file.turns.len() >= crate::store::migrate::MAX_TURNS_PER_SESSION {
+        return Err(LoomError::Validation(format!(
+            "session has {} turns — maximum {} reached. Start a new session or trim old turns.",
+            file.turns.len(),
+            crate::store::migrate::MAX_TURNS_PER_SESSION,
+        )));
+    }
 
     let parent = file
         .branches
@@ -391,6 +400,32 @@ pub async fn session_set_context_limit(
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
     store_ops::set_context_limit(&mut file, limit);
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn session_set_tags(
+    app: AppHandle,
+    session_id: SessionId,
+    tags: Vec<String>,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    file.session.tags = tags;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
+pub async fn session_set_model(
+    app: AppHandle,
+    session_id: SessionId,
+    model: String,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    file.session.model = model;
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
 }
@@ -819,5 +854,37 @@ mod tests {
     #[test]
     fn parse_report_path_none_for_plain_line() {
         assert!(parse_report_path("probing jailbreak.1").is_none());
+    }
+
+    #[test]
+    fn parse_report_path_with_spaces_in_path() {
+        let line = "report closed :) /home/user name/.local/share/garak/runs/abc.report.html";
+        // Space in username — parser takes from last space before .report.html
+        assert!(parse_report_path(line).is_some());
+        assert!(parse_report_path(line).unwrap().ends_with(".report.html"));
+    }
+
+    #[test]
+    fn parse_report_path_windows_path() {
+        let line = r"report closed :) C:\Users\Roger\.local\share\garak\runs\x.report.html";
+        assert!(parse_report_path(line).is_some());
+    }
+
+    #[test]
+    fn validate_shell_safe_rejects_semicolons() {
+        assert!(validate_shell_safe("model; rm -rf /", "test").is_err());
+    }
+
+    #[test]
+    fn validate_shell_safe_allows_model_names() {
+        assert!(validate_shell_safe("llama3.1:8b", "model").is_ok());
+        assert!(validate_shell_safe("qwen2.5-coder:7b", "model").is_ok());
+        assert!(validate_shell_safe("mistral-nemo:12b", "model").is_ok());
+    }
+
+    #[test]
+    fn validate_prompt_name_rejects_traversal() {
+        assert!(validate_prompt_name("../etc/passwd").is_err());
+        assert!(validate_prompt_name("good-name_123").is_ok());
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ConfirmModal } from "./ConfirmModal";
 import { promptList, type PromptEntry } from "../lib/ipc";
@@ -21,6 +21,37 @@ export function SessionSidebar() {
   const setContextLimit = useLoom((s) => s.setContextLimit);
   const [prompts, setPrompts] = useState<PromptEntry[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+
+  // Search & tag filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // Collect all unique tags across sessions
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const s of sessions) {
+      for (const t of s.tags ?? []) tagSet.add(t);
+    }
+    return Array.from(tagSet).sort();
+  }, [sessions]);
+
+  // Filter sessions by search query and active tag
+  const filtered = useMemo(() => {
+    let result = sessions;
+    if (activeTag) {
+      result = result.filter((s) => (s.tags ?? []).includes(activeTag));
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      result = result.filter(
+        (s) =>
+          s.title.toLowerCase().includes(q) ||
+          s.model.toLowerCase().includes(q) ||
+          (s.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+      );
+    }
+    return result;
+  }, [sessions, searchQuery, activeTag]);
 
   useEffect(() => {
     promptList().then(setPrompts).catch(() => {});
@@ -62,6 +93,42 @@ export function SessionSidebar() {
         </div>
       </header>
 
+      {/* Search box */}
+      <div className="sidebar-search">
+        <input
+          type="text"
+          placeholder="search sessions..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="search sessions"
+        />
+        {searchQuery && (
+          <button
+            className="search-clear"
+            onClick={() => setSearchQuery("")}
+            aria-label="clear search"
+          >
+            x
+          </button>
+        )}
+      </div>
+
+      {/* Tag filter chips */}
+      {allTags.length > 0 && (
+        <div className="tag-filter-bar">
+          {allTags.map((tag) => (
+            <button
+              key={tag}
+              className={`tag-chip${activeTag === tag ? " active" : ""}`}
+              onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              title={activeTag === tag ? "clear filter" : `filter by "${tag}"`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
       {creating && (
         <div className="create-panel">
           <label className="field">
@@ -75,7 +142,7 @@ export function SessionSidebar() {
           <label className="field">
             <span>Model</span>
             {modelsLoading ? (
-              <span className="loading-pulse muted">loading models…</span>
+              <span className="loading-pulse muted">loading models...</span>
             ) : models.length === 0 ? (
               <span className="empty-hint">
                 no models found — run <code>ollama pull llama3.1:8b</code>
@@ -89,7 +156,7 @@ export function SessionSidebar() {
                   <option key={m.name} value={m.name}>
                     {m.name}
                     {m.details?.parameter_size
-                      ? ` · ${m.details.parameter_size}`
+                      ? ` - ${m.details.parameter_size}`
                       : ""}
                   </option>
                 ))}
@@ -106,7 +173,7 @@ export function SessionSidebar() {
                   if (p) setNewSystem(p.content);
                 }}
               >
-                <option value="">— load from library —</option>
+                <option value="">-- load from library --</option>
                 {prompts.map((p) => (
                   <option key={p.name} value={p.name}>
                     {p.name}
@@ -141,16 +208,14 @@ export function SessionSidebar() {
 
       <ul className="session-list">
         {sessionsLoading && sessions.length === 0 && (
-          <>
-            <li className="skeleton skeleton-row" />
-            <li className="skeleton skeleton-row" />
-            <li className="skeleton skeleton-row" />
-          </>
         )}
         {!sessionsLoading && sessions.length === 0 && !creating && (
-          <li className="empty">no sessions yet — click + to start</li>
+          <li className="empty">no sessions yet -- click + to start</li>
         )}
-        {sessions.map((s) => {
+        {!sessionsLoading && sessions.length > 0 && filtered.length === 0 && (
+          <li className="empty muted">no sessions match filter</li>
+        )}
+        {filtered.map((s) => {
           const isActive = current?.session.id === s.id;
           return (
             <li
@@ -163,6 +228,13 @@ export function SessionSidebar() {
                 {s.model} · {s.turn_count} turns
                 {s.branch_count > 1 ? ` · ${s.branch_count} branches` : ""}
               </div>
+              {(s.tags ?? []).length > 0 && (
+                <div className="session-tags">
+                  {(s.tags ?? []).map((t) => (
+                    <span key={t} className="tag-badge">{t}</span>
+                  ))}
+                </div>
+              )}
               <button
                 className="delete-button"
                 onClick={(e) => {
@@ -171,7 +243,7 @@ export function SessionSidebar() {
                 }}
                 title="Delete"
               >
-                ×
+                x
               </button>
             </li>
           );

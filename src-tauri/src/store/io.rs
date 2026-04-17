@@ -22,7 +22,9 @@ fn bak_path(dir: &Path, id: &SessionId) -> PathBuf {
 
 pub fn read_session(path: &Path) -> Result<SessionFile> {
     let bytes = fs::read(path)?;
-    let file: SessionFile = serde_json::from_slice(&bytes)?;
+    let raw: serde_json::Value = serde_json::from_slice(&bytes)?;
+    let migrated = crate::store::migrate::migrate_if_needed(path, raw)?;
+    let file: SessionFile = serde_json::from_value(migrated)?;
     validator::validate(&file).map_err(|e| LoomError::Ollama(format!("validation: {e}")))?;
     Ok(file)
 }
@@ -89,6 +91,7 @@ pub fn list_sessions(dir: &Path) -> Result<Vec<SessionSummary>> {
                 model: file.session.model,
                 turn_count: file.turns.len(),
                 branch_count: file.branches.len(),
+                tags: file.session.tags,
             });
         }
     }
@@ -148,6 +151,7 @@ mod tests {
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
                 context_limit: None,
                 default_seed: None,
+                tags: vec![],
             },
             turns,
             branches,
@@ -252,6 +256,22 @@ mod tests {
         let file: SessionFile = serde_json::from_str(legacy).unwrap();
         assert_eq!(file.session.context_limit, None);
         assert!(!file.turns.get(&TurnId::new("t1")).unwrap().pinned);
+    }
+
+    #[test]
+    fn rejects_corrupted_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad.loom.json");
+        fs::write(&path, b"not valid json at all {{{").unwrap();
+        assert!(read_session(&path).is_err());
+    }
+
+    #[test]
+    fn rejects_valid_json_but_invalid_schema() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("bad_schema.loom.json");
+        fs::write(&path, br#"{"loom_schema": 1, "session": {}, "turns": {}, "branches": {}, "head_branch": "nope"}"#).unwrap();
+        assert!(read_session(&path).is_err());
     }
 
     #[test]
