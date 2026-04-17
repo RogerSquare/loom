@@ -645,6 +645,58 @@ html,
   color: var(--muted);
 }
 
+.sweep-consistency {
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-1);
+}
+
+.consistency-bar {
+  height: 6px;
+  background: var(--bg-3);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.consistency-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e88 0%, #d8c868 50%, #7ec488 100%);
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+.consistency-stats {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.consistency-stats strong {
+  color: var(--fg);
+}
+
+.consistency-badge {
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.consistency-badge.perfect {
+  background: #1f3a1f;
+  color: #7ec488;
+}
+
+.consistency-badge.majority {
+  background: #3a3a1f;
+  color: #d8c868;
+}
+
 /* ─── Garak modal ───────────────────────────────────────────────── */
 
 .export-panel {
