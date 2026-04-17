@@ -11,6 +11,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutsOverlay } from "./components/ShortcutsOverlay";
 import { Timeline } from "./components/Timeline";
 import { WelcomeModal } from "./components/WelcomeModal";
+import { settingsLoad } from "./lib/ipc";
 import { useLoom } from "./lib/store";
 import "./App.css";
 
@@ -40,6 +41,16 @@ function App() {
 
   useEffect(() => {
     refresh();
+    // Apply saved theme on startup
+    settingsLoad()
+      .then((s) => {
+        const root = document.documentElement;
+        root.classList.remove("dark", "light");
+        if (s.theme === "dark" || s.theme === "light") {
+          root.classList.add(s.theme);
+        }
+      })
+      .catch(() => {});
   }, [refresh]);
 
   useEffect(() => {

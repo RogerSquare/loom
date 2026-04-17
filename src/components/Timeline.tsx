@@ -39,7 +39,10 @@ export function Timeline() {
     if (now - lastScrollRef.current < 100) return; // throttle to ~10fps
     lastScrollRef.current = now;
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: "smooth",
+      });
     }
   }, [timeline.length, streamingContent, streaming]);
 
@@ -75,7 +78,12 @@ export function Timeline() {
             onSweep={setSweepingFrom}
           />
         ))}
-        {streamingTurn && <TurnCard turn={streamingTurn} streaming />}
+        {streamingTurn && (
+          <>
+            <TurnCard turn={streamingTurn} streaming />
+            {streamingContent && <span className="streaming-cursor" />}
+          </>
+        )}
         {sendError && (
           <div className="error" role="alert">stream error: {sendError.message}</div>
         )}

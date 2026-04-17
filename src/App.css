@@ -11,8 +11,46 @@
   --dim: #555;
   --accent: #6aa9e0;
   --danger: #e88;
+  --overlay-bg: rgba(0, 0, 0, 0.5);
+  --shadow-color: rgba(0, 0, 0, 0.4);
   background: var(--bg);
   color: var(--fg);
+}
+
+/* ─── Light theme ────────────────────────────────────────────── */
+
+:root.light {
+  color-scheme: light;
+  --bg: #f5f5f7;
+  --bg-1: #ffffff;
+  --bg-2: #f0f0f2;
+  --bg-3: #e5e5ea;
+  --border: #d1d1d6;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --dim: #aeaeb2;
+  --accent: #0071e3;
+  --danger: #ff3b30;
+  --overlay-bg: rgba(0, 0, 0, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not(.dark) {
+    color-scheme: light;
+    --bg: #f5f5f7;
+    --bg-1: #ffffff;
+    --bg-2: #f0f0f2;
+    --bg-3: #e5e5ea;
+    --border: #d1d1d6;
+    --fg: #1d1d1f;
+    --muted: #6e6e73;
+    --dim: #aeaeb2;
+    --accent: #0071e3;
+    --danger: #ff3b30;
+    --overlay-bg: rgba(0, 0, 0, 0.25);
+    --shadow-color: rgba(0, 0, 0, 0.1);
+  }
 }
 
 * {
@@ -92,6 +130,7 @@ html,
   line-height: 1;
   cursor: pointer;
   padding: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .icon-button:hover {
@@ -120,6 +159,7 @@ html,
   padding: 0.6rem 1rem;
   cursor: pointer;
   border-left: 2px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .session-row:hover {
@@ -215,6 +255,7 @@ html,
   border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .header-action:hover {
@@ -474,6 +515,7 @@ html,
   border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .branch-tab:hover {
@@ -517,6 +559,19 @@ html,
   border-radius: 6px;
   padding: 0.8rem 1rem;
   background: var(--bg-1);
+  animation: fadeSlideIn 0.2s ease-out;
+  transition: opacity 0.2s, box-shadow 0.15s, border-color 0.15s;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .turn-system {
@@ -1249,6 +1304,7 @@ kbd {
 
 .commit-graph-svg .node.clickable:hover circle {
   opacity: 1 !important;
+  filter: drop-shadow(0 0 4px var(--accent));
 }
 
 /* ─── Edit panel modal ─────────────────────────────────────────── */
@@ -1256,11 +1312,17 @@ kbd {
 .edit-panel-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--overlay-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 100;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .edit-panel {
@@ -1428,6 +1490,45 @@ button.danger:hover:not(:disabled) {
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* Skeleton shimmer for loading states */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-2) 25%,
+    var(--bg-3) 50%,
+    var(--bg-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.skeleton-row {
+  height: 52px;
+  margin: 4px 1rem;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Streaming cursor */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--accent);
+  vertical-align: text-bottom;
+  margin-left: 1px;
+  animation: cursorPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes cursorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
 }
 
 .empty-hint {
@@ -1762,6 +1863,7 @@ button {
   font-family: inherit;
   font-size: 0.85rem;
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
 }
 
 button:hover:not(:disabled) {
@@ -1771,6 +1873,135 @@ button:hover:not(:disabled) {
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ─── Light theme overrides for hardcoded colors ─────────────── */
+
+:root.light .annotation-tag {
+  background: #dce8f0;
+  color: #3a5a70;
+}
+
+:root.light .annotation-rm {
+  color: #3a5a70;
+}
+
+:root.light .banner.error {
+  background: #fef0f0;
+  border-bottom-color: #ff3b30;
+}
+
+:root.light .banner code,
+:root.light .empty-hint code,
+:root.light .garak-launcher code,
+:root.light .garak-report code {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+:root.light .garak-log,
+:root.light .export-body {
+  background: #1a1a2e;
+}
+
+:root.light .excluded-badge {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+:root.light .sweep-status.status-pending,
+:root.light .sweep-status.status-streaming {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+:root.light .sweep-status.status-done {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+:root.light .sweep-status.status-error {
+  background: #fef0f0;
+  color: #c62828;
+}
+
+:root.light .consistency-badge.perfect {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+:root.light .consistency-badge.majority {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+:root.light .diff-body ins,
+:root.light .diff-matrix-body ins {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+:root.light .diff-body del {
+  background: #fef0f0;
+  color: #b71c1c;
+}
+
+:root.light .error-boundary-msg {
+  background: #fef0f0;
+  border-color: #ffcdd2;
+}
+
+:root.light .commit-graph-svg .node circle {
+  fill: #d5d5d5;
+}
+
+:root.light .commit-graph-svg .node-system circle {
+  fill: #bbb;
+}
+
+:root.light .commit-graph-svg .node-user circle {
+  fill: #bbd4ea;
+}
+
+:root.light .commit-graph-svg .node-assistant circle {
+  fill: #b8e0c8;
+}
+
+:root.light .commit-graph-svg .node-tool circle {
+  fill: #ead8b8;
+}
+
+:root.light .rerun-popover,
+:root.light .compare-menu {
+  box-shadow: 0 4px 16px var(--shadow-color);
+}
+
+:root.light button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+:root.light button.primary:hover:not(:disabled) {
+  background: #005bb5;
+}
+
+:root.light button.danger {
+  background: #fef0f0;
+  border-color: #ff3b30;
+  color: #c62828;
+}
+
+:root.light button.danger:hover:not(:disabled) {
+  background: #fddede;
+}
+
+:root.light .timeline .error {
+  background: #fef0f0;
+  border-left-color: #ff3b30;
+}
+
+:root.light .composer-error {
+  border-left-color: #ff3b30;
 }
 
 /* ─── Responsive breakpoints ──────────────────────────────────── */
