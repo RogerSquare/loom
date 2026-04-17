@@ -6,6 +6,7 @@ import { Composer } from "./components/Composer";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ExportModal } from "./components/ExportModal";
 import { GarakModal } from "./components/GarakModal";
+import { NewSessionView } from "./components/NewSessionView";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutsOverlay } from "./components/ShortcutsOverlay";
@@ -289,10 +290,9 @@ function App() {
             </ErrorBoundary>
           </>
         ) : (
-          <div className="empty-state">
-            <h1>Loom</h1>
-            <p>pick a session on the left, or <strong>+</strong> to start a new one.</p>
-          </div>
+          <ErrorBoundary name="NewSessionView">
+            <NewSessionView />
+          </ErrorBoundary>
         )}
       </main>
       {settingsOpen && (
