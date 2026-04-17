@@ -1979,6 +1979,165 @@ button.danger:hover:not(:disabled) {
   font-weight: 500;
 }
 
+/* ─── Turn hover toolbar ─────────────────────────────────────── */
+
+.turn {
+  position: relative;
+}
+
+.turn-toolbar {
+  position: absolute;
+  bottom: -14px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+  z-index: 10;
+}
+
+.turn:hover .turn-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: auto;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* ─── Turn pin gutter ────────────────────────────────────────── */
+
+.turn-pin-gutter {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px 0 0 4px;
+  padding: 0;
+  min-height: auto;
+  transition: background 0.15s ease-out;
+}
+
+.turn-pin-gutter:hover {
+  background: var(--accent);
+}
+
+.turn-pin-gutter.pinned {
+  background: var(--accent);
+}
+
+/* ─── Composer bar (redesigned) ──────────────────────────────── */
+
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.composer-context {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.composer-icon-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 28px;
+}
+
+.composer-icon-btn:hover {
+  background: var(--bg-3);
+  color: var(--fg);
+}
+
+.composer-icon-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.composer-send {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 32px;
+  white-space: nowrap;
+}
+
+.composer-send:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.composer-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Composer options panel (collapsible) ───────────────────── */
+
+.composer-options-panel {
+  border-top: 1px solid var(--border);
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* ─── Fields / buttons ────────────────────────────────────────── */
 
 .field {
