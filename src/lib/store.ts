@@ -225,6 +225,10 @@ export const useLoom = create<LoomStore>((set, get) => ({
   async sendRawJson(jsonStr) {
     const { current } = get();
     if (!current) return;
+    if (get().streaming) {
+      set({ sendError: { message: "another stream is already running" } });
+      return;
+    }
 
     let req;
     try {
@@ -332,6 +336,10 @@ export const useLoom = create<LoomStore>((set, get) => ({
   async continueFromPrefill(turnId, prefillText, options) {
     const { current } = get();
     if (!current) return;
+    if (get().streaming) {
+      set({ sendError: { message: "another stream is already running" } });
+      return;
+    }
 
     // Build context up to the edited turn's PARENT (the preceding user turn).
     const chain = chainEndingAt(current, turnId);
@@ -517,7 +525,7 @@ export const useLoom = create<LoomStore>((set, get) => ({
 
     await Promise.all(
       runs.map(async (run) => {
-        updateSweepRun(set, get, run.id, { status: "streaming" });
+        updateSweepRun(set, run.id, { status: "streaming" });
         try {
           await ollamaChat(
             {
@@ -532,18 +540,27 @@ export const useLoom = create<LoomStore>((set, get) => ({
             },
             (ev) => {
               if (ev.kind === "delta") {
-                const cur = pickSweepRun(get, run.id);
-                if (!cur) return;
-                updateSweepRun(set, get, run.id, {
-                  content: cur.content + ev.content,
+                // Use functional updater to safely append content
+                set((state) => {
+                  if (!state.sweep) return {};
+                  return {
+                    sweep: {
+                      ...state.sweep,
+                      runs: state.sweep.runs.map((r) =>
+                        r.id === run.id
+                          ? { ...r, content: r.content + ev.content }
+                          : r,
+                      ),
+                    },
+                  };
                 });
               } else if (ev.kind === "done") {
-                updateSweepRun(set, get, run.id, {
+                updateSweepRun(set, run.id, {
                   status: "done",
                   eval_count: ev.eval_count ?? undefined,
                 });
               } else if (ev.kind === "error") {
-                updateSweepRun(set, get, run.id, {
+                updateSweepRun(set, run.id, {
                   status: "error",
                   error: ev.message,
                 });
@@ -551,7 +568,7 @@ export const useLoom = create<LoomStore>((set, get) => ({
             },
           );
         } catch (e) {
-          updateSweepRun(set, get, run.id, {
+          updateSweepRun(set, run.id, {
             status: "error",
             error: String(e),
           });
@@ -604,23 +621,23 @@ function chainEndingAt(file: SessionFile, turnId: string): Turn[] {
   return chain.reverse();
 }
 
-function pickSweepRun(get: Getter, runId: string): SweepRun | undefined {
-  return get().sweep?.runs.find((r) => r.id === runId);
-}
-
+/** Atomic sweep-run updater — uses functional set() to avoid lost updates
+ * when multiple parallel promises call this concurrently. */
 function updateSweepRun(
   set: Setter,
-  get: Getter,
   runId: string,
   patch: Partial<SweepRun>,
 ) {
-  const sweep = get().sweep;
-  if (!sweep) return;
-  set({
-    sweep: {
-      ...sweep,
-      runs: sweep.runs.map((r) => (r.id === runId ? { ...r, ...patch } : r)),
-    },
+  set((state) => {
+    if (!state.sweep) return {};
+    return {
+      sweep: {
+        ...state.sweep,
+        runs: state.sweep.runs.map((r) =>
+          r.id === runId ? { ...r, ...patch } : r,
+        ),
+      },
+    };
   });
 }
 
@@ -639,6 +656,10 @@ async function streamAssistantReply(
   set: Setter,
   get: Getter,
 ): Promise<void> {
+  if (get().streaming) {
+    set({ sendError: { message: "another stream is already running — wait for it to finish" } });
+    return;
+  }
   set({
     streaming: true,
     streamingContent: "",
