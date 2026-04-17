@@ -29,6 +29,7 @@ import {
   type ModelInfo,
   type SessionFile,
   type SessionSummary,
+  type StreamEvent,
   type TokenLogprob,
   type Turn,
 } from "./ipc";
@@ -266,7 +267,7 @@ export const useLoom = create<LoomStore>((set, get) => ({
       let assistantText = "";
       let responseMeta: GeneratedBy["response_meta"] = {};
 
-      await ollamaChat(req, (ev) => {
+      await ollamaChat(req, (ev: StreamEvent) => {
         if (ev.kind === "delta") {
           assistantText += ev.content;
           set({ streamingContent: assistantText });
@@ -277,6 +278,14 @@ export const useLoom = create<LoomStore>((set, get) => ({
             prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
             eval_duration_ns: ev.eval_duration_ns ?? undefined,
             total_duration_ns: ev.total_duration_ns ?? undefined,
+            ttft_ns: ev.ttft_ns,
+            cached_tokens: ev.cached_tokens,
+            reasoning_tokens: ev.reasoning_tokens,
+            cost_usd: ev.cost_usd,
+            stop_reason: ev.stop_reason,
+            refusal_label: ev.refusal_label,
+            provider_id: ev.provider_id,
+            model_id: ev.model_id,
           };
         } else if (ev.kind === "error") {
           set({ sendError: { message: ev.message } });
@@ -724,9 +733,9 @@ async function streamAssistantReply(
 
     const provider = file.session.provider ?? "ollama";
 
-    const handleEvent = (ev: { kind: string; content?: string; message?: string; logprobs?: TokenLogprob[] | null; prompt_eval_count?: number | null; eval_count?: number | null; prompt_eval_duration_ns?: number | null; eval_duration_ns?: number | null; total_duration_ns?: number | null }) => {
+    const handleEvent = (ev: StreamEvent) => {
       if (ev.kind === "delta") {
-        assistantText += ev.content ?? "";
+        assistantText += ev.content;
         if (ev.logprobs) accumulatedLogprobs.push(...ev.logprobs);
         set({ streamingContent: assistantText });
       } else if (ev.kind === "done") {
@@ -736,9 +745,17 @@ async function streamAssistantReply(
           prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
           eval_duration_ns: ev.eval_duration_ns ?? undefined,
           total_duration_ns: ev.total_duration_ns ?? undefined,
+          ttft_ns: ev.ttft_ns,
+          cached_tokens: ev.cached_tokens,
+          reasoning_tokens: ev.reasoning_tokens,
+          cost_usd: ev.cost_usd,
+          stop_reason: ev.stop_reason,
+          refusal_label: ev.refusal_label,
+          provider_id: ev.provider_id,
+          model_id: ev.model_id,
         };
       } else if (ev.kind === "error") {
-        set({ sendError: { message: ev.message ?? "unknown error" } });
+        set({ sendError: { message: ev.message } });
       }
     };
 
