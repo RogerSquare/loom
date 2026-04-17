@@ -5,6 +5,7 @@ import { useLoom } from "../lib/store";
 import { DiffMatrix } from "./DiffMatrix";
 import { DiffPane } from "./DiffPane";
 import { EditPanel } from "./EditPanel";
+import { JudgeModal } from "./JudgeModal";
 import { SweepLauncher } from "./SweepLauncher";
 import { SweepModal } from "./SweepModal";
 import { TurnCard } from "./TurnCard";
@@ -21,6 +22,7 @@ export function Timeline() {
     null,
   );
   const [matrixTurns, setMatrixTurns] = useState<Turn[] | null>(null);
+  const [judging, setJudging] = useState<Turn | null>(null);
   const [sweepingFrom, setSweepingFrom] = useState<Turn | null>(null);
 
   const { timeline, excluded, rootId } = useMemo(() => {
@@ -59,6 +61,7 @@ export function Timeline() {
             onEdit={setEditing}
             onCompare={(left, right) => setComparing({ left, right })}
             onCompareAll={setMatrixTurns}
+            onJudge={setJudging}
             onSweep={setSweepingFrom}
           />
         ))}
@@ -82,6 +85,13 @@ export function Timeline() {
         <SweepLauncher
           turn={sweepingFrom}
           onClose={() => setSweepingFrom(null)}
+        />
+      )}
+      {judging && (
+        <JudgeModal
+          turn={judging}
+          contextTurns={timeline}
+          onClose={() => setJudging(null)}
         />
       )}
       {sweep && <SweepModal />}

@@ -885,6 +885,75 @@ html,
   font-size: 0.8rem;
 }
 
+/* ─── Judge modal ───────────────────────────────────────────────── */
+
+.judge-panel {
+  width: min(700px, 90vw);
+  max-height: 90vh;
+}
+
+.judge-config {
+  padding: 1rem 1.2rem;
+  background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.judge-custom-rubric {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 3px;
+  resize: vertical;
+}
+
+.judge-result {
+  padding: 1rem 1.2rem;
+  border-top: 1px solid var(--border);
+}
+
+.judge-score {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 0.6rem;
+}
+
+.judge-score-num {
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--accent);
+}
+
+.judge-score-max {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.judge-score-label {
+  margin-left: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.judge-reasoning {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
 .garak-report code {
   font-family: "SF Mono", Consolas, monospace;
   font-size: 0.75rem;

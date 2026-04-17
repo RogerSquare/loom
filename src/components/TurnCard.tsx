@@ -14,6 +14,7 @@ interface Props {
   onCompare?: (left: Turn, right: Turn) => void;
   onCompareAll?: (turns: Turn[]) => void;
   onSweep?: (turn: Turn) => void;
+  onJudge?: (turn: Turn) => void;
 }
 
 const ROLE_LABEL: Record<Turn["role"], string> = {
@@ -32,6 +33,7 @@ export function TurnCard({
   onCompare,
   onCompareAll,
   onSweep,
+  onJudge,
 }: Props) {
   const current = useLoom((s) => s.current);
   const pinTurn = useLoom((s) => s.pinTurn);
@@ -204,6 +206,15 @@ export function TurnCard({
                 </div>
               )}
             </div>
+          )}
+          {onJudge && !streaming && turn.role === "assistant" && (
+            <button
+              className="edit-button"
+              onClick={() => onJudge(turn)}
+              title="judge this response with a second model"
+            >
+              judge
+            </button>
           )}
           {!streaming && turn.role === "assistant" && turn.parent && (
             <div className="compare-menu-wrap">
