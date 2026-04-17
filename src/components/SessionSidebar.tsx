@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { promptList, type PromptEntry } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
 export function SessionSidebar() {
@@ -17,6 +18,11 @@ export function SessionSidebar() {
   const [newSystem, setNewSystem] = useState("You are a helpful assistant.");
   const [newLimit, setNewLimit] = useState<string>("");
   const setContextLimit = useLoom((s) => s.setContextLimit);
+  const [prompts, setPrompts] = useState<PromptEntry[]>([]);
+
+  useEffect(() => {
+    promptList().then(setPrompts).catch(() => {});
+  }, [creating]);
 
   const beginCreate = () => {
     setNewTitle("untitled");
@@ -72,6 +78,22 @@ export function SessionSidebar() {
           </label>
           <label className="field">
             <span>System prompt</span>
+            {prompts.length > 0 && (
+              <select
+                value=""
+                onChange={(e) => {
+                  const p = prompts.find((p) => p.name === e.target.value);
+                  if (p) setNewSystem(p.content);
+                }}
+              >
+                <option value="">— load from library —</option>
+                {prompts.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            )}
             <textarea
               value={newSystem}
               onChange={(e) => setNewSystem(e.target.value)}

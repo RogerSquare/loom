@@ -261,6 +261,23 @@ export type GarakEvent =
   | { kind: "done"; exit_code: number; report_path: string | null }
   | { kind: "error"; message: string };
 
+// ───────────────────────────── Prompt library ─────────────────────────────
+
+export interface PromptEntry {
+  name: string;
+  content: string;
+}
+
+export const promptList = (): Promise<PromptEntry[]> => invoke("prompt_list");
+
+export const promptSave = (name: string, content: string): Promise<void> =>
+  invoke("prompt_save", { name, content });
+
+export const promptDelete = (name: string): Promise<void> =>
+  invoke("prompt_delete", { name });
+
+// ───────────────────────────── Garak ──────────────────────────────────────
+
 export async function garakScan(
   model: string,
   probes: string | null,

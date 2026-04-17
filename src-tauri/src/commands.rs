@@ -352,6 +352,66 @@ pub async fn session_set_context_limit(
     Ok(file)
 }
 
+// ────────────────────────────── Prompt library ───────────────────────────────
+
+fn prompts_dir(app: &AppHandle) -> Result<PathBuf> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LoomError::Ollama(format!("app_data_dir: {e}")))?;
+    let dir = base.join("prompts");
+    Ok(dir)
+}
+
+#[derive(Clone, Serialize)]
+pub struct PromptEntry {
+    pub name: String,
+    pub content: String,
+}
+
+#[tauri::command]
+pub async fn prompt_list(app: AppHandle) -> Result<Vec<PromptEntry>> {
+    let dir = prompts_dir(&app)?;
+    if !dir.exists() {
+        return Ok(vec![]);
+    }
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(&dir).map_err(LoomError::Io)? {
+        let entry = entry.map_err(LoomError::Io)?;
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) == Some("md") {
+            let name = path
+                .file_stem()
+                .and_then(|n| n.to_str())
+                .unwrap_or("untitled")
+                .to_string();
+            let content = std::fs::read_to_string(&path).map_err(LoomError::Io)?;
+            out.push(PromptEntry { name, content });
+        }
+    }
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
+}
+
+#[tauri::command]
+pub async fn prompt_save(app: AppHandle, name: String, content: String) -> Result<()> {
+    let dir = prompts_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(LoomError::Io)?;
+    let path = dir.join(format!("{name}.md"));
+    std::fs::write(path, content).map_err(LoomError::Io)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn prompt_delete(app: AppHandle, name: String) -> Result<()> {
+    let dir = prompts_dir(&app)?;
+    let path = dir.join(format!("{name}.md"));
+    if path.exists() {
+        std::fs::remove_file(path).map_err(LoomError::Io)?;
+    }
+    Ok(())
+}
+
 // ────────────────────────────── Prefill / continue ──────────────────────────
 
 /// Stream an assistant continuation starting from `prefill` text, using
