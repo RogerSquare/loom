@@ -139,18 +139,31 @@ pub async fn ollama_chat(
     req: ChatRequest,
     on_chunk: Channel<StreamEvent>,
 ) -> Result<()> {
+    let model_id = req.model.clone();
     let stream = chat_stream(&state.http, &state.ollama_base, req).await?;
     tokio::pin!(stream);
+
+    let start = std::time::Instant::now();
+    let mut first_token_at: Option<std::time::Instant> = None;
 
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(c) if c.done => {
+                let ttft_ns =
+                    first_token_at.map(|t| t.duration_since(start).as_nanos() as u64);
                 let event = StreamEvent::Done {
                     prompt_eval_count: c.prompt_eval_count,
                     eval_count: c.eval_count,
                     prompt_eval_duration_ns: c.prompt_eval_duration,
                     eval_duration_ns: c.eval_duration,
                     total_duration_ns: c.total_duration,
+                    ttft_ns,
+                    cached_tokens: None,
+                    reasoning_tokens: None,
+                    stop_reason: c.done_reason.clone(),
+                    refusal_label: None,
+                    provider_id: Some("ollama".to_string()),
+                    model_id: Some(model_id.clone()),
                 };
                 on_chunk
                     .send(event)
@@ -158,6 +171,9 @@ pub async fn ollama_chat(
             }
             Ok(c) => {
                 if let Some(m) = c.message {
+                    if !m.content.is_empty() && first_token_at.is_none() {
+                        first_token_at = Some(std::time::Instant::now());
+                    }
                     on_chunk
                         .send(StreamEvent::Delta {
                             content: m.content,
@@ -712,6 +728,7 @@ pub async fn ollama_continue_from_prefill(
 
     let prompt = render_template(family, &messages, Some(&prefill));
 
+    let model_id = model.clone();
     let req = GenerateRequest {
         model,
         prompt,
@@ -724,9 +741,14 @@ pub async fn ollama_continue_from_prefill(
     let stream = generate_stream(&state.http, &state.ollama_base, req).await?;
     tokio::pin!(stream);
 
+    let start = std::time::Instant::now();
+    let mut first_token_at: Option<std::time::Instant> = None;
+
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(c) if c.done => {
+                let ttft_ns =
+                    first_token_at.map(|t| t.duration_since(start).as_nanos() as u64);
                 on_chunk
                     .send(StreamEvent::Done {
                         prompt_eval_count: c.prompt_eval_count,
@@ -734,11 +756,21 @@ pub async fn ollama_continue_from_prefill(
                         prompt_eval_duration_ns: c.prompt_eval_duration,
                         eval_duration_ns: c.eval_duration,
                         total_duration_ns: c.total_duration,
+                        ttft_ns,
+                        cached_tokens: None,
+                        reasoning_tokens: None,
+                        stop_reason: c.done_reason.clone(),
+                        refusal_label: None,
+                        provider_id: Some("ollama".to_string()),
+                        model_id: Some(model_id.clone()),
                     })
                     .map_err(|e| LoomError::Channel(e.to_string()))?;
             }
             Ok(c) => {
                 if let Some(text) = c.response {
+                    if !text.is_empty() && first_token_at.is_none() {
+                        first_token_at = Some(std::time::Instant::now());
+                    }
                     on_chunk
                         .send(StreamEvent::Delta {
                             content: text,

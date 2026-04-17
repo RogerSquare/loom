@@ -53,6 +53,15 @@ export type StreamEvent =
       prompt_eval_duration_ns: number | null;
       eval_duration_ns: number | null;
       total_duration_ns: number | null;
+      // Observability fields (feat-loom-043). All optional; fields the provider
+      // didn't surface are omitted from the serialized event.
+      ttft_ns?: number;
+      cached_tokens?: number;
+      reasoning_tokens?: number;
+      stop_reason?: string;
+      refusal_label?: string;
+      provider_id?: string;
+      model_id?: string;
     }
   | { kind: "error"; message: string };
 

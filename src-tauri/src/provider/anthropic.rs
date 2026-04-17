@@ -1,4 +1,5 @@
 use std::pin::Pin;
+use std::time::Instant;
 
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
@@ -55,12 +56,24 @@ struct TextDelta {
 struct MessageDelta {
     #[serde(default)]
     usage: Option<MessageDeltaUsage>,
+    #[serde(default)]
+    delta: Option<MessageDeltaInner>,
+}
+
+#[derive(Debug, Deserialize)]
+struct MessageDeltaInner {
+    #[serde(default)]
+    stop_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 struct MessageDeltaUsage {
     #[serde(default)]
     output_tokens: Option<u32>,
+    #[serde(default)]
+    cache_read_input_tokens: Option<u32>,
+    #[serde(default)]
+    cache_creation_input_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,6 +91,10 @@ struct MessageStartInner {
 struct MessageStartUsage {
     #[serde(default)]
     input_tokens: Option<u32>,
+    #[serde(default)]
+    cache_read_input_tokens: Option<u32>,
+    #[serde(default)]
+    cache_creation_input_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -173,6 +190,12 @@ impl Provider for AnthropicProvider {
         let mut sse_buf = SseBuffer::new();
         let mut input_tokens: Option<u32> = None;
         let mut output_tokens: Option<u32> = None;
+        let mut cached_tokens: Option<u32> = None;
+        let mut stop_reason: Option<String> = None;
+
+        let start = Instant::now();
+        let mut first_token_at: Option<Instant> = None;
+        let model_id = model.to_string();
 
         let event_stream = async_stream::stream! {
             let mut stream = byte_stream;
@@ -185,12 +208,22 @@ impl Provider for AnthropicProvider {
                             match event_type {
                                 "message_start" => {
                                     if let Ok(ms) = serde_json::from_str::<MessageStart>(&sse_event.data) {
-                                        input_tokens = ms.message.usage.and_then(|u| u.input_tokens);
+                                        if let Some(u) = ms.message.usage {
+                                            input_tokens = u.input_tokens;
+                                            let cr = u.cache_read_input_tokens.unwrap_or(0);
+                                            let cc = u.cache_creation_input_tokens.unwrap_or(0);
+                                            if cr + cc > 0 {
+                                                cached_tokens = Some(cr + cc);
+                                            }
+                                        }
                                     }
                                 }
                                 "content_block_delta" => {
                                     if let Ok(cbd) = serde_json::from_str::<ContentBlockDelta>(&sse_event.data) {
                                         if !cbd.delta.text.is_empty() {
+                                            if first_token_at.is_none() {
+                                                first_token_at = Some(Instant::now());
+                                            }
                                             yield Ok(StreamEvent::Delta {
                                                 content: cbd.delta.text,
                                                 logprobs: None,
@@ -200,16 +233,46 @@ impl Provider for AnthropicProvider {
                                 }
                                 "message_delta" => {
                                     if let Ok(md) = serde_json::from_str::<MessageDelta>(&sse_event.data) {
-                                        output_tokens = md.usage.and_then(|u| u.output_tokens);
+                                        if let Some(u) = md.usage {
+                                            if let Some(ot) = u.output_tokens {
+                                                output_tokens = Some(ot);
+                                            }
+                                            // message_delta can carry additional cached-read counts
+                                            // for long streams; accumulate.
+                                            let extra = u.cache_read_input_tokens.unwrap_or(0)
+                                                + u.cache_creation_input_tokens.unwrap_or(0);
+                                            if extra > 0 {
+                                                cached_tokens = Some(cached_tokens.unwrap_or(0) + extra);
+                                            }
+                                        }
+                                        if let Some(d) = md.delta {
+                                            if let Some(sr) = d.stop_reason {
+                                                stop_reason = Some(sr);
+                                            }
+                                        }
                                     }
                                 }
                                 "message_stop" => {
+                                    let ttft_ns = first_token_at
+                                        .map(|t| t.duration_since(start).as_nanos() as u64);
+                                    let total_ns = Some(start.elapsed().as_nanos() as u64);
+                                    let refusal_label = stop_reason
+                                        .as_deref()
+                                        .filter(|s| *s == "refusal")
+                                        .map(|s| s.to_string());
                                     yield Ok(StreamEvent::Done {
                                         prompt_eval_count: input_tokens,
                                         eval_count: output_tokens,
                                         prompt_eval_duration_ns: None,
                                         eval_duration_ns: None,
-                                        total_duration_ns: None,
+                                        total_duration_ns: total_ns,
+                                        ttft_ns,
+                                        cached_tokens,
+                                        reasoning_tokens: None,
+                                        stop_reason: stop_reason.clone(),
+                                        refusal_label,
+                                        provider_id: Some("anthropic".to_string()),
+                                        model_id: Some(model_id.clone()),
                                     });
                                 }
                                 "error" => {
@@ -330,14 +393,63 @@ mod tests {
     fn message_delta_deserializes() {
         let data = r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":42}}"#;
         let md: MessageDelta = serde_json::from_str(data).unwrap();
-        assert_eq!(md.usage.unwrap().output_tokens, Some(42));
+        let usage = md.usage.unwrap();
+        assert_eq!(usage.output_tokens, Some(42));
+        // Cached-read/creation fields are optional and absent here.
+        assert!(usage.cache_read_input_tokens.is_none());
+        // stop_reason extraction from delta (feat-loom-043)
+        assert_eq!(md.delta.unwrap().stop_reason.as_deref(), Some("end_turn"));
+    }
+
+    #[test]
+    fn message_delta_refusal_stop_reason_extracts() {
+        let data = r#"{"type":"message_delta","delta":{"stop_reason":"refusal"},"usage":{"output_tokens":5}}"#;
+        let md: MessageDelta = serde_json::from_str(data).unwrap();
+        assert_eq!(md.delta.unwrap().stop_reason.as_deref(), Some("refusal"));
+    }
+
+    #[test]
+    fn message_delta_with_additional_cached_tokens() {
+        // Anthropic can surface additional cache tokens on message_delta for
+        // long streams; those must accumulate into cached_tokens.
+        let data = r#"{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":10,"cache_read_input_tokens":128,"cache_creation_input_tokens":32}}"#;
+        let md: MessageDelta = serde_json::from_str(data).unwrap();
+        let usage = md.usage.unwrap();
+        assert_eq!(usage.cache_read_input_tokens, Some(128));
+        assert_eq!(usage.cache_creation_input_tokens, Some(32));
     }
 
     #[test]
     fn message_start_deserializes() {
         let data = r#"{"type":"message_start","message":{"id":"msg_01","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-20250514","usage":{"input_tokens":25,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":0}}}"#;
         let ms: MessageStart = serde_json::from_str(data).unwrap();
-        assert_eq!(ms.message.usage.unwrap().input_tokens, Some(25));
+        let usage = ms.message.usage.unwrap();
+        assert_eq!(usage.input_tokens, Some(25));
+        assert_eq!(usage.cache_read_input_tokens, Some(0));
+        assert_eq!(usage.cache_creation_input_tokens, Some(0));
+    }
+
+    #[test]
+    fn message_start_with_cached_tokens_deserializes() {
+        let data = r#"{"type":"message_start","message":{"id":"msg_02","type":"message","role":"assistant","content":[],"model":"claude-opus-4-7","usage":{"input_tokens":100,"cache_creation_input_tokens":200,"cache_read_input_tokens":500,"output_tokens":0}}}"#;
+        let ms: MessageStart = serde_json::from_str(data).unwrap();
+        let usage = ms.message.usage.unwrap();
+        assert_eq!(usage.input_tokens, Some(100));
+        assert_eq!(usage.cache_creation_input_tokens, Some(200));
+        assert_eq!(usage.cache_read_input_tokens, Some(500));
+    }
+
+    #[test]
+    fn refusal_label_filter_logic() {
+        // Mirrors the closure at the message_stop yield site. Only "refusal"
+        // populates refusal_label; other stop_reasons leave it None.
+        fn label_from(sr: Option<&str>) -> Option<String> {
+            sr.filter(|s| *s == "refusal").map(|s| s.to_string())
+        }
+        assert_eq!(label_from(Some("refusal")).as_deref(), Some("refusal"));
+        assert!(label_from(Some("end_turn")).is_none());
+        assert!(label_from(Some("max_tokens")).is_none());
+        assert!(label_from(None).is_none());
     }
 
     #[test]

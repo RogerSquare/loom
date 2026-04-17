@@ -124,6 +124,23 @@ pub enum StreamEvent {
         prompt_eval_duration_ns: Option<u64>,
         eval_duration_ns: Option<u64>,
         total_duration_ns: Option<u64>,
+        // Observability fields (feat-loom-043). All Option, populated where the
+        // provider surfaces them. Cost is NOT computed here — pricing lookup
+        // happens in the caller (see feat-loom-043 phase 3).
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ttft_ns: Option<u64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cached_tokens: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        reasoning_tokens: Option<u32>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        stop_reason: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        refusal_label: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        provider_id: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        model_id: Option<String>,
     },
     Error {
         message: String,
