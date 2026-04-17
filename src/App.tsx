@@ -7,6 +7,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ExportModal } from "./components/ExportModal";
 import { GarakModal } from "./components/GarakModal";
 import { SessionSidebar } from "./components/SessionSidebar";
+import { SettingsModal } from "./components/SettingsModal";
 import { Timeline } from "./components/Timeline";
 import { useLoom } from "./lib/store";
 import "./App.css";
@@ -23,6 +24,13 @@ function App() {
   const [exportOpen, setExportOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [graphVisible, setGraphVisible] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setSettingsOpen(true);
+    window.addEventListener("loom:open-settings", handler);
+    return () => window.removeEventListener("loom:open-settings", handler);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -177,6 +185,9 @@ function App() {
           </div>
         )}
       </main>
+      {settingsOpen && (
+        <SettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
       {garakOpen && <GarakModal onClose={() => setGarakOpen(false)} />}
       {exportOpen && current && (
         <ExportModal file={current} onClose={() => setExportOpen(false)} />

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 
 use futures::StreamExt;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
 use time::format_description::well_known::Rfc3339;
@@ -393,6 +393,79 @@ pub async fn session_set_context_limit(
     store_ops::set_context_limit(&mut file, limit);
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
+}
+
+// ────────────────────────────── Settings ─────────────────────────────────────
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    #[serde(default = "default_endpoint")]
+    pub ollama_endpoint: String,
+    #[serde(default = "default_temperature")]
+    pub default_temperature: f32,
+    #[serde(default = "default_top_p")]
+    pub default_top_p: f32,
+    #[serde(default = "default_num_ctx")]
+    pub default_num_ctx: u32,
+    #[serde(default)]
+    pub default_seed: Option<i64>,
+    #[serde(default)]
+    pub default_context_limit: Option<u32>,
+    #[serde(default = "default_theme")]
+    pub theme: String,
+    #[serde(default)]
+    pub first_run_done: bool,
+}
+
+fn default_endpoint() -> String { "http://localhost:11434".to_string() }
+fn default_temperature() -> f32 { 0.7 }
+fn default_top_p() -> f32 { 0.9 }
+fn default_num_ctx() -> u32 { 8192 }
+fn default_theme() -> String { "dark".to_string() }
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            ollama_endpoint: default_endpoint(),
+            default_temperature: default_temperature(),
+            default_top_p: default_top_p(),
+            default_num_ctx: default_num_ctx(),
+            default_seed: None,
+            default_context_limit: None,
+            theme: default_theme(),
+            first_run_done: false,
+        }
+    }
+}
+
+fn settings_path(app: &AppHandle) -> Result<PathBuf> {
+    let base = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| LoomError::Filesystem(format!("app_data_dir: {e}")))?;
+    Ok(base.join("settings.json"))
+}
+
+#[tauri::command]
+pub async fn settings_load(app: AppHandle) -> Result<AppSettings> {
+    let path = settings_path(&app)?;
+    if !path.exists() {
+        return Ok(AppSettings::default());
+    }
+    let bytes = std::fs::read(&path).map_err(LoomError::Io)?;
+    let settings: AppSettings = serde_json::from_slice(&bytes).unwrap_or_default();
+    Ok(settings)
+}
+
+#[tauri::command]
+pub async fn settings_save(app: AppHandle, settings: AppSettings) -> Result<()> {
+    let path = settings_path(&app)?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(LoomError::Io)?;
+    }
+    let json = serde_json::to_vec_pretty(&settings).map_err(LoomError::Json)?;
+    std::fs::write(&path, json).map_err(LoomError::Io)?;
+    Ok(())
 }
 
 // ────────────────────────────── Prompt library ───────────────────────────────

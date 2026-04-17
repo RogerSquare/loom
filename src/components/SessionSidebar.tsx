@@ -47,9 +47,19 @@ export function SessionSidebar() {
     <aside className="sidebar">
       <header className="sidebar-header">
         <span className="brand">LOOM</span>
-        <button className="icon-button" onClick={beginCreate} title="New session" aria-label="create new session">
-          +
-        </button>
+        <div className="row" style={{ gap: "4px" }}>
+          <button className="icon-button" onClick={beginCreate} title="New session" aria-label="create new session">
+            +
+          </button>
+          <button
+            className="icon-button"
+            onClick={() => window.dispatchEvent(new CustomEvent("loom:open-settings"))}
+            title="Settings"
+            aria-label="open settings"
+          >
+            ⚙
+          </button>
+        </div>
       </header>
 
       {creating && (
