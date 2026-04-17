@@ -37,7 +37,7 @@ impl LoomState {
         let http = reqwest::Client::builder()
             .no_proxy()
             .build()
-            .expect("reqwest client build");
+            .expect("failed to build reqwest HTTP client — network stack may be misconfigured");
         Self {
             http,
             ollama_base: "http://localhost:11434".to_string(),
@@ -109,7 +109,9 @@ pub async fn ollama_chat(
             }
             Err(e) => {
                 let msg = e.to_string();
-                let _ = on_chunk.send(StreamEvent::Error { message: msg });
+                if on_chunk.send(StreamEvent::Error { message: msg }).is_err() {
+                    eprintln!("[loom] stream channel closed while sending error");
+                }
                 return Err(e);
             }
         }
@@ -244,7 +246,10 @@ pub async fn turn_append(
     };
     let new_turn_id = new_turn.id.clone();
     file.turns.insert(new_turn_id.clone(), new_turn);
-    file.branches.get_mut(&branch_id).unwrap().head = new_turn_id;
+    file.branches
+        .get_mut(&branch_id)
+        .ok_or_else(|| LoomError::Ollama(format!("branch {branch_id} vanished during turn_append")))?
+        .head = new_turn_id;
 
     store_io::write_session_atomic(&dir, &file)?;
     Ok(file)
@@ -475,9 +480,14 @@ pub async fn ollama_continue_from_prefill(
                 }
             }
             Err(e) => {
-                let _ = on_chunk.send(StreamEvent::Error {
-                    message: e.to_string(),
-                });
+                if on_chunk
+                    .send(StreamEvent::Error {
+                        message: e.to_string(),
+                    })
+                    .is_err()
+                {
+                    eprintln!("[loom] stream channel closed while sending error");
+                }
                 return Err(e);
             }
         }
@@ -537,7 +547,7 @@ pub async fn garak_scan(
     });
 
     {
-        let mut lock = state.garak_abort.lock().unwrap();
+        let mut lock = state.garak_abort.lock().expect("garak_abort mutex poisoned");
         *lock = Some(task.abort_handle());
     }
 
@@ -558,7 +568,7 @@ pub async fn garak_scan(
     }
 
     {
-        let mut lock = state.garak_abort.lock().unwrap();
+        let mut lock = state.garak_abort.lock().expect("garak_abort mutex poisoned");
         *lock = None;
     }
     Ok(())
@@ -592,11 +602,15 @@ async fn garak_scan_inner(
         Ok(c) => c,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             let msg = "garak binary not found on PATH. Install with: pipx install garak".to_string();
-            let _ = on_event.send(GarakEvent::Error { message: msg.clone() });
+            if on_event.send(GarakEvent::Error { message: msg.clone() }).is_err() {
+                eprintln!("[loom] garak event channel closed while sending error");
+            }
             return Err(LoomError::Ollama(msg));
         }
         Err(e) => {
-            let _ = on_event.send(GarakEvent::Error { message: e.to_string() });
+            if on_event.send(GarakEvent::Error { message: e.to_string() }).is_err() {
+                eprintln!("[loom] garak event channel closed while sending error");
+            }
             return Err(LoomError::Io(e));
         }
     };
@@ -651,8 +665,13 @@ async fn garak_scan_inner(
 #[tauri::command]
 pub async fn garak_cancel(state: tauri::State<'_, LoomState>) -> Result<()> {
     let handle = {
-        let mut lock = state.garak_abort.lock().unwrap();
-        lock.take()
+        match state.garak_abort.lock() {
+            Ok(mut lock) => lock.take(),
+            Err(_) => {
+                eprintln!("[loom] garak_abort mutex poisoned during cancel");
+                None
+            }
+        }
     };
     if let Some(h) = handle {
         h.abort();
