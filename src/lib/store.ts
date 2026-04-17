@@ -64,7 +64,9 @@ interface LoomStore {
   // Catalog
   models: ModelInfo[];
   modelsError: string | null;
+  modelsLoading: boolean;
   sessions: SessionSummary[];
+  sessionsLoading: boolean;
 
   // Open session
   current: SessionFile | null;
@@ -139,7 +141,9 @@ interface LoomStore {
 export const useLoom = create<LoomStore>((set, get) => ({
   models: [],
   modelsError: null,
+  modelsLoading: true,
   sessions: [],
+  sessionsLoading: true,
   current: null,
   streaming: false,
   streamingContent: "",
@@ -165,6 +169,7 @@ export const useLoom = create<LoomStore>((set, get) => ({
   },
 
   async refresh() {
+    set({ sessionsLoading: true, modelsLoading: true });
     const [sessions, models] = await Promise.all([
       sessionList().catch(() => [] as SessionSummary[]),
       listModels().catch((e) => {
@@ -172,7 +177,13 @@ export const useLoom = create<LoomStore>((set, get) => ({
         return [] as ModelInfo[];
       }),
     ]);
-    set({ sessions, models, modelsError: models.length > 0 ? null : get().modelsError });
+    set({
+      sessions,
+      models,
+      modelsError: models.length > 0 ? null : get().modelsError,
+      sessionsLoading: false,
+      modelsLoading: false,
+    });
   },
 
   async openSession(id) {
