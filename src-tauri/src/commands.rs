@@ -256,6 +256,14 @@ pub async fn turn_append(
     let dir = sessions_dir(&app)?;
     let mut file = store_io::load_session(&dir, &session_id)?;
 
+    if file.turns.len() >= crate::store::migrate::MAX_TURNS_PER_SESSION {
+        return Err(LoomError::Validation(format!(
+            "session has {} turns — maximum {} reached. Start a new session or trim old turns.",
+            file.turns.len(),
+            crate::store::migrate::MAX_TURNS_PER_SESSION,
+        )));
+    }
+
     let parent = file
         .branches
         .get(&branch_id)
