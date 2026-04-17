@@ -261,6 +261,24 @@ export type GarakEvent =
   | { kind: "done"; exit_code: number; report_path: string | null }
   | { kind: "error"; message: string };
 
+// ───────────────────────────── Settings ───────────────────────────────────
+
+export interface AppSettings {
+  ollama_endpoint: string;
+  default_temperature: number;
+  default_top_p: number;
+  default_num_ctx: number;
+  default_seed?: number;
+  default_context_limit?: number;
+  theme: string;
+  first_run_done: boolean;
+}
+
+export const settingsLoad = (): Promise<AppSettings> => invoke("settings_load");
+
+export const settingsSave = (settings: AppSettings): Promise<void> =>
+  invoke("settings_save", { settings });
+
 // ───────────────────────────── Prompt library ─────────────────────────────
 
 export interface PromptEntry {
