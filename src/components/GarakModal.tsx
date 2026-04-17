@@ -1,21 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-import { garakScan } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
 interface Props {
   onClose: () => void;
 }
 
-type Line = { stream: "out" | "err"; text: string };
-
 export function GarakModal({ onClose }: Props) {
   const current = useLoom((s) => s.current);
-  const [running, setRunning] = useState(false);
-  const [lines, setLines] = useState<Line[]>([]);
-  const [reportPath, setReportPath] = useState<string | null>(null);
-  const [exitCode, setExitCode] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const garak = useLoom((s) => s.garak);
+  const startGarak = useLoom((s) => s.startGarak);
+  const cancelGarak = useLoom((s) => s.cancelGarak);
+  const clearGarak = useLoom((s) => s.clearGarak);
   const [probes, setProbes] = useState("latentinjection");
   const [generations, setGenerations] = useState(3);
   const logRef = useRef<HTMLPreElement | null>(null);
@@ -24,36 +20,14 @@ export function GarakModal({ onClose }: Props) {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
     }
-  }, [lines.length]);
+  }, [garak.lines.length]);
 
   if (!current) return null;
 
-  const kick = async () => {
-    if (running) return;
-    setRunning(true);
-    setLines([]);
-    setReportPath(null);
-    setExitCode(null);
-    setError(null);
-    try {
-      await garakScan(current.session.model, probes, generations, (ev) => {
-        if (ev.kind === "stdout") {
-          setLines((ls) => [...ls, { stream: "out", text: ev.line }]);
-        } else if (ev.kind === "stderr") {
-          setLines((ls) => [...ls, { stream: "err", text: ev.line }]);
-        } else if (ev.kind === "done") {
-          setExitCode(ev.exit_code);
-          setReportPath(ev.report_path);
-          setRunning(false);
-        } else if (ev.kind === "error") {
-          setError(ev.message);
-          setRunning(false);
-        }
-      });
-    } catch (e) {
-      setError(String(e));
-      setRunning(false);
-    }
+  const hasRun = garak.lines.length > 0 || garak.running;
+
+  const kick = () => {
+    startGarak(probes, generations);
   };
 
   return (
@@ -65,13 +39,14 @@ export function GarakModal({ onClose }: Props) {
         <header>
           <span>
             garak scan — model <strong>{current.session.model}</strong>
+            {garak.running && " — running…"}
           </span>
           <button className="icon-button" onClick={onClose}>
             ×
           </button>
         </header>
 
-        {!running && lines.length === 0 && (
+        {!hasRun && (
           <div className="garak-launcher">
             <label className="field">
               <span>Probes (comma-separated, or module name)</span>
@@ -88,52 +63,63 @@ export function GarakModal({ onClose }: Props) {
               />
             </label>
             <p className="muted">
-              Requires <code>garak</code> on PATH (<code>pipx install garak</code>).
-              Runs against the active Ollama model. A single probe typically takes 1–3 minutes.
+              Requires <code>garak</code> on PATH (<code>pip install garak</code>).
+              Runs against the active Ollama model. A single probe module
+              typically takes 1–10 minutes.
             </p>
           </div>
         )}
 
-        {(running || lines.length > 0) && (
+        {hasRun && (
           <pre className="garak-log" ref={logRef}>
-            {lines.map((l, i) => (
-              <span key={i} className={l.stream === "err" ? "garak-err" : "garak-out"}>
+            {garak.lines.map((l, i) => (
+              <span
+                key={i}
+                className={l.stream === "err" ? "garak-err" : "garak-out"}
+              >
                 {l.text}
                 {"\n"}
               </span>
             ))}
-            {running && <span className="garak-cursor">▍</span>}
+            {garak.running && <span className="garak-cursor">▍</span>}
           </pre>
         )}
 
-        {error && <div className="error">{error}</div>}
+        {garak.error && <div className="error">{garak.error}</div>}
 
-        {reportPath && (
+        {garak.reportPath && (
           <div className="garak-report">
             <span className="muted">report:</span>{" "}
-            <code>{reportPath}</code>
+            <code>{garak.reportPath}</code>
           </div>
         )}
 
         <footer>
           <span className="muted">
-            {running
-              ? "scanning…"
-              : exitCode != null
-                ? `exit ${exitCode}`
+            {garak.running
+              ? "scanning… (close this modal without losing progress)"
+              : garak.exitCode != null
+                ? `exit ${garak.exitCode}`
                 : "not started"}
           </span>
           <div className="row">
-            <button onClick={onClose} disabled={running}>
-              close
-            </button>
-            <button
-              className="primary"
-              onClick={kick}
-              disabled={running || !probes.trim()}
-            >
-              {lines.length > 0 ? "run again" : "start scan"}
-            </button>
+            {garak.running ? (
+              <button onClick={cancelGarak}>cancel scan</button>
+            ) : (
+              <>
+                {hasRun && (
+                  <button onClick={clearGarak}>clear log</button>
+                )}
+                <button onClick={onClose}>close</button>
+                <button
+                  className="primary"
+                  onClick={kick}
+                  disabled={garak.running || !probes.trim()}
+                >
+                  {hasRun ? "run again" : "start scan"}
+                </button>
+              </>
+            )}
           </div>
         </footer>
       </div>

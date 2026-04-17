@@ -26,6 +26,7 @@ pub fn run() {
             commands::turn_pin,
             commands::session_set_context_limit,
             commands::garak_scan,
+            commands::garak_cancel,
             commands::ollama_continue_from_prefill,
         ])
         .run(tauri::generate_context!())

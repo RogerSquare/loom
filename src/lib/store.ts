@@ -4,6 +4,8 @@ import {
   branchCheckout,
   branchForkFromEdit,
   buildContextMessages,
+  garakCancel,
+  garakScan,
   listModels,
   ollamaChat,
   ollamaContinueFromPrefill,
@@ -16,6 +18,7 @@ import {
   turnAppend,
   turnPin,
   type ChatOptions,
+  type GarakEvent,
   type GeneratedBy,
   type Message,
   type ModelInfo,
@@ -45,6 +48,16 @@ export interface SweepState {
   runs: SweepRun[];
 }
 
+type GarakLine = { stream: "out" | "err"; text: string };
+
+export interface GarakState {
+  running: boolean;
+  lines: GarakLine[];
+  reportPath: string | null;
+  exitCode: number | null;
+  error: string | null;
+}
+
 interface LoomStore {
   // Catalog
   models: ModelInfo[];
@@ -68,6 +81,12 @@ interface LoomStore {
 
   // Variance sweep
   sweep: SweepState | null;
+
+  // Garak scan (persists across modal open/close)
+  garak: GarakState;
+  startGarak: (probes: string, generations: number) => Promise<void>;
+  cancelGarak: () => Promise<void>;
+  clearGarak: () => void;
   startSweep: (
     turnId: string,
     opts: { n: number; mode: SweepMode; baseOptions: ChatOptions },
@@ -117,6 +136,13 @@ export const useLoom = create<LoomStore>((set, get) => ({
   logprobsEnabled: false,
   setLogprobsEnabled: (v) => set({ logprobsEnabled: v }),
   sweep: null,
+  garak: {
+    running: false,
+    lines: [],
+    reportPath: null,
+    exitCode: null,
+    error: null,
+  },
 
   async refresh() {
     const [sessions, models] = await Promise.all([
@@ -283,6 +309,62 @@ export const useLoom = create<LoomStore>((set, get) => ({
     if (!current) return;
     const updated = await sessionSetContextLimit(current.session.id, limit);
     set({ current: updated });
+  },
+
+  async startGarak(probes, generations) {
+    const { current } = get();
+    if (!current) return;
+    set({
+      garak: {
+        running: true,
+        lines: [],
+        reportPath: null,
+        exitCode: null,
+        error: null,
+      },
+    });
+    try {
+      await garakScan(current.session.model, probes, generations, (ev: GarakEvent) => {
+        const g = get().garak;
+        if (ev.kind === "stdout") {
+          set({ garak: { ...g, lines: [...g.lines, { stream: "out", text: ev.line }] } });
+        } else if (ev.kind === "stderr") {
+          set({ garak: { ...g, lines: [...g.lines, { stream: "err", text: ev.line }] } });
+        } else if (ev.kind === "done") {
+          set({
+            garak: {
+              ...g,
+              running: false,
+              exitCode: ev.exit_code,
+              reportPath: ev.report_path,
+            },
+          });
+        } else if (ev.kind === "error") {
+          set({ garak: { ...g, running: false, error: ev.message } });
+        }
+      });
+    } catch (e) {
+      const g = get().garak;
+      set({ garak: { ...g, running: false, error: String(e) } });
+    }
+  },
+
+  async cancelGarak() {
+    await garakCancel();
+    const g = get().garak;
+    set({ garak: { ...g, running: false, error: "cancelled by user" } });
+  },
+
+  clearGarak() {
+    set({
+      garak: {
+        running: false,
+        lines: [],
+        reportPath: null,
+        exitCode: null,
+        error: null,
+      },
+    });
   },
 
   async startSweep(turnId, { n, mode, baseOptions }) {

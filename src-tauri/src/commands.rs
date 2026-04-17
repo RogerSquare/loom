@@ -29,6 +29,7 @@ use crate::store::{
 pub struct LoomState {
     pub http: reqwest::Client,
     pub ollama_base: String,
+    pub garak_abort: std::sync::Mutex<Option<tokio::task::AbortHandle>>,
 }
 
 impl LoomState {
@@ -40,6 +41,7 @@ impl LoomState {
         Self {
             http,
             ollama_base: "http://localhost:11434".to_string(),
+            garak_abort: std::sync::Mutex::new(None),
         }
     }
 }
@@ -445,6 +447,7 @@ fn parse_report_path(line: &str) -> Option<String> {
 
 #[tauri::command]
 pub async fn garak_scan(
+    state: tauri::State<'_, LoomState>,
     model: String,
     probes: Option<String>,
     generations: Option<u32>,
@@ -453,14 +456,53 @@ pub async fn garak_scan(
     let probe_arg = probes.unwrap_or_else(|| "latentinjection".to_string());
     let generations = generations.unwrap_or(3);
 
+    let chan = on_event.clone();
+    let task = tokio::spawn(async move {
+        garak_scan_inner(&model, &probe_arg, generations, &chan).await
+    });
+
+    {
+        let mut lock = state.garak_abort.lock().unwrap();
+        *lock = Some(task.abort_handle());
+    }
+
+    match task.await {
+        Ok(Ok(())) => {}
+        Ok(Err(e)) => {
+            let _ = on_event.send(GarakEvent::Error { message: e.to_string() });
+        }
+        Err(_) => {
+            let _ = on_event.send(GarakEvent::Done {
+                exit_code: -1,
+                report_path: None,
+            });
+            let _ = on_event.send(GarakEvent::Error {
+                message: "scan cancelled".to_string(),
+            });
+        }
+    }
+
+    {
+        let mut lock = state.garak_abort.lock().unwrap();
+        *lock = None;
+    }
+    Ok(())
+}
+
+async fn garak_scan_inner(
+    model: &str,
+    probe_arg: &str,
+    generations: u32,
+    on_event: &Channel<GarakEvent>,
+) -> Result<()> {
     let mut cmd = tokio::process::Command::new("garak");
     cmd.args([
         "--model_type",
         "ollama",
         "--model_name",
-        &model,
+        model,
         "--probes",
-        &probe_arg,
+        probe_arg,
         "--generations",
         &generations.to_string(),
     ])
@@ -517,10 +559,7 @@ pub async fn garak_scan(
         report_path
     });
 
-    let status = child
-        .wait()
-        .await
-        .map_err(LoomError::Io)?;
+    let status = child.wait().await.map_err(LoomError::Io)?;
     let out_path = stdout_task.await.ok().flatten();
     let err_path = stderr_task.await.ok().flatten();
     let report_path = out_path.or(err_path);
@@ -531,6 +570,18 @@ pub async fn garak_scan(
             report_path,
         })
         .map_err(|e| LoomError::Channel(e.to_string()))?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn garak_cancel(state: tauri::State<'_, LoomState>) -> Result<()> {
+    let handle = {
+        let mut lock = state.garak_abort.lock().unwrap();
+        lock.take()
+    };
+    if let Some(h) = handle {
+        h.abort();
+    }
     Ok(())
 }
 

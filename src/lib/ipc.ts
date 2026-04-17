@@ -266,6 +266,10 @@ export async function garakScan(
   });
 }
 
+export async function garakCancel(): Promise<void> {
+  await invoke("garak_cancel");
+}
+
 // ───────────────────────────── Helpers ─────────────────────────────
 
 /** Turns with the same parent as `turnId`, excluding the turn itself. */
