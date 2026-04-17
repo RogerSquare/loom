@@ -73,8 +73,15 @@ export function Timeline() {
         ))}
         {streamingTurn && <TurnCard turn={streamingTurn} streaming />}
         {sendError && (
-          <div className="error">stream error: {sendError.message}</div>
+          <div className="error" role="alert">stream error: {sendError.message}</div>
         )}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {streaming
+            ? "assistant is responding…"
+            : timeline.length > 1
+              ? `${timeline.length} turns in conversation`
+              : ""}
+        </div>
       </div>
       {editing && <EditPanel turn={editing} onClose={() => setEditing(null)} />}
       {comparing && (
