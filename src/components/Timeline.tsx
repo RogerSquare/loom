@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { buildContextMessages, buildTimeline, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
+import { DiffMatrix } from "./DiffMatrix";
 import { DiffPane } from "./DiffPane";
 import { EditPanel } from "./EditPanel";
 import { SweepLauncher } from "./SweepLauncher";
@@ -19,6 +20,7 @@ export function Timeline() {
   const [comparing, setComparing] = useState<{ left: Turn; right: Turn } | null>(
     null,
   );
+  const [matrixTurns, setMatrixTurns] = useState<Turn[] | null>(null);
   const [sweepingFrom, setSweepingFrom] = useState<Turn | null>(null);
 
   const { timeline, excluded, rootId } = useMemo(() => {
@@ -56,6 +58,7 @@ export function Timeline() {
             isRoot={t.id === rootId}
             onEdit={setEditing}
             onCompare={(left, right) => setComparing({ left, right })}
+            onCompareAll={setMatrixTurns}
             onSweep={setSweepingFrom}
           />
         ))}
@@ -71,6 +74,9 @@ export function Timeline() {
           right={comparing.right}
           onClose={() => setComparing(null)}
         />
+      )}
+      {matrixTurns && (
+        <DiffMatrix turns={matrixTurns} onClose={() => setMatrixTurns(null)} />
       )}
       {sweepingFrom && !sweep && (
         <SweepLauncher

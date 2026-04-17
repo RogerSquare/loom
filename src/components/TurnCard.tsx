@@ -29,6 +29,7 @@ export function TurnCard({
   isRoot,
   onEdit,
   onCompare,
+  onCompareAll,
   onSweep,
 }: Props) {
   const current = useLoom((s) => s.current);
@@ -129,6 +130,15 @@ export function TurnCard({
           <span className="timestamp">
             {new Date(turn.created_at).toLocaleTimeString()}
           </span>
+          {!streaming && onCompareAll && siblings.length >= 2 && (
+            <button
+              className="edit-button"
+              onClick={() => onCompareAll([turn, ...siblings])}
+              title="compare all siblings side-by-side"
+            >
+              all ({siblings.length + 1})
+            </button>
+          )}
           {!streaming && onCompare && siblings.length > 0 && (
             <div
               className="compare-menu-wrap"
