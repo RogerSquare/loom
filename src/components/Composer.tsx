@@ -62,7 +62,7 @@ export function Composer() {
     [],
   );
 
-  const computeRequestJson = () => {
+  const computeRequestJson = useMemo(() => {
     const { included } = buildContextMessages(current);
     const messages = included.map((t) => ({
       role: t.role,
@@ -92,11 +92,11 @@ export function Composer() {
       req.top_logprobs = 5;
     }
     return JSON.stringify(req, null, 2);
-  };
+  }, [current, temperature, topP, numCtx, seed, outputFormat, outputSchema, logprobsEnabled]);
 
   const toggleRawJson = () => {
     if (!rawJsonMode) {
-      setRawJson(computeRequestJson());
+      setRawJson(computeRequestJson);
     }
     setRawJsonMode(!rawJsonMode);
   };
