@@ -1,8 +1,10 @@
 import CodeMirror from "@uiw/react-codemirror";
+import { json as jsonLang } from "@codemirror/lang-json";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorView } from "@codemirror/view";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { buildContextMessages } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
 const extensions = [
@@ -28,6 +30,10 @@ export function Composer() {
   const setOutputFormat = useLoom((s) => s.setOutputFormat);
   const outputSchema = useLoom((s) => s.outputSchema);
   const setOutputSchema = useLoom((s) => s.setOutputSchema);
+  const rawJsonMode = useLoom((s) => s.rawJsonMode);
+  const setRawJsonMode = useLoom((s) => s.setRawJsonMode);
+  const sendRawJson = useLoom((s) => s.sendRawJson);
+  const [rawJson, setRawJson] = useState("");
 
   const [content, setContent] = useState("");
   const [temperature, setTemperature] = useState(0.7);
@@ -39,7 +45,65 @@ export function Composer() {
   const seed = seedDraft;
   const setSeed = setSeedDraft;
 
+  const jsonExtensions = useMemo(
+    () => [
+      jsonLang(),
+      EditorView.lineWrapping,
+      EditorView.theme({
+        "&": { backgroundColor: "transparent", fontSize: "0.8rem" },
+        ".cm-content": { padding: "0.4rem 0" },
+        ".cm-focused": { outline: "none" },
+        ".cm-gutters": { display: "none" },
+      }),
+    ],
+    [],
+  );
+
+  const computeRequestJson = () => {
+    const { included } = buildContextMessages(current);
+    const messages = included.map((t) => ({
+      role: t.role,
+      content: t.content,
+    }));
+    const req: Record<string, unknown> = {
+      model: current.session.model,
+      messages,
+      stream: true,
+      options: {
+        temperature,
+        top_p: topP,
+        num_ctx: numCtx,
+        ...(seed ? { seed: Number(seed) } : {}),
+      },
+    };
+    if (outputFormat === "json") req.format = "json";
+    else if (outputFormat === "schema" && outputSchema.trim()) {
+      try {
+        req.format = JSON.parse(outputSchema);
+      } catch {
+        req.format = "json";
+      }
+    }
+    if (logprobsEnabled) {
+      req.logprobs = true;
+      req.top_logprobs = 5;
+    }
+    return JSON.stringify(req, null, 2);
+  };
+
+  const toggleRawJson = () => {
+    if (!rawJsonMode) {
+      setRawJson(computeRequestJson());
+    }
+    setRawJsonMode(!rawJsonMode);
+  };
+
   const send = async () => {
+    if (rawJsonMode) {
+      if (!rawJson.trim() || streaming) return;
+      await sendRawJson(rawJson);
+      return;
+    }
     if (!content.trim() || streaming) return;
     const text = content;
     setContent("");
@@ -136,24 +200,61 @@ export function Composer() {
       )}
 
       <div className="composer-editor" onKeyDown={onKeyDown}>
-        <CodeMirror
-          value={content}
-          onChange={setContent}
-          extensions={extensions}
-          theme="dark"
-          placeholder="message… (Ctrl+Enter to send)"
-          basicSetup={{
-            lineNumbers: false,
-            foldGutter: false,
-            highlightActiveLine: false,
-            highlightActiveLineGutter: false,
-          }}
-        />
+        {rawJsonMode ? (
+          <CodeMirror
+            value={rawJson}
+            onChange={setRawJson}
+            extensions={jsonExtensions}
+            theme="dark"
+            placeholder="edit the outbound JSON request…"
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              highlightActiveLine: true,
+              highlightActiveLineGutter: false,
+            }}
+          />
+        ) : (
+          <CodeMirror
+            value={content}
+            onChange={setContent}
+            extensions={extensions}
+            theme="dark"
+            placeholder="message… (Ctrl+Enter to send)"
+            basicSetup={{
+              lineNumbers: false,
+              foldGutter: false,
+              highlightActiveLine: false,
+              highlightActiveLineGutter: false,
+            }}
+          />
+        )}
       </div>
 
       <div className="row composer-actions">
-        <button onClick={send} disabled={streaming || !content.trim()}>
-          {streaming ? "streaming…" : "send (Ctrl+Enter)"}
+        <button
+          onClick={send}
+          disabled={
+            streaming ||
+            (rawJsonMode ? !rawJson.trim() : !content.trim())
+          }
+        >
+          {streaming
+            ? "streaming…"
+            : rawJsonMode
+              ? "send raw JSON"
+              : "send (Ctrl+Enter)"}
+        </button>
+        <button
+          className={rawJsonMode ? "toggle-active" : ""}
+          onClick={toggleRawJson}
+          title={
+            rawJsonMode
+              ? "switch to normal composer"
+              : "edit the outbound API request as raw JSON"
+          }
+        >
+          {rawJsonMode ? "← normal" : "{ } JSON"}
         </button>
         <span className="muted">
           model: <strong>{current.session.model}</strong> · branch:{" "}

@@ -1085,6 +1085,11 @@ button.primary:hover:not(:disabled) {
   background: #3a5a7a;
 }
 
+.toggle-active {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
 /* ─── Compare dropdown ─────────────────────────────────────────── */
 
 .compare-menu-wrap {

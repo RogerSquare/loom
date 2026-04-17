@@ -84,6 +84,9 @@ interface LoomStore {
   outputSchema: string;
   setOutputFormat: (v: "none" | "json" | "schema") => void;
   setOutputSchema: (v: string) => void;
+  rawJsonMode: boolean;
+  setRawJsonMode: (v: boolean) => void;
+  sendRawJson: (jsonStr: string) => Promise<void>;
 
   // Variance sweep
   sweep: SweepState | null;
@@ -150,6 +153,8 @@ export const useLoom = create<LoomStore>((set, get) => ({
   outputSchema: "",
   setOutputFormat: (v) => set({ outputFormat: v }),
   setOutputSchema: (v) => set({ outputSchema: v }),
+  rawJsonMode: false,
+  setRawJsonMode: (v) => set({ rawJsonMode: v }),
   sweep: null,
   garak: {
     running: false,
@@ -215,6 +220,69 @@ export const useLoom = create<LoomStore>((set, get) => ({
     );
     set({ current: afterUser });
     await streamAssistantReply(afterUser, options, set, get);
+  },
+
+  async sendRawJson(jsonStr) {
+    const { current } = get();
+    if (!current) return;
+
+    let req;
+    try {
+      req = JSON.parse(jsonStr);
+    } catch (e) {
+      set({ sendError: { message: `invalid JSON: ${e}` } });
+      return;
+    }
+
+    set({
+      streaming: true,
+      streamingContent: "",
+      streamingStartedAt: Date.now(),
+      sendError: null,
+    });
+
+    try {
+      let assistantText = "";
+      let responseMeta: GeneratedBy["response_meta"] = {};
+
+      await ollamaChat(req, (ev) => {
+        if (ev.kind === "delta") {
+          assistantText += ev.content;
+          set({ streamingContent: assistantText });
+        } else if (ev.kind === "done") {
+          responseMeta = {
+            prompt_eval_count: ev.prompt_eval_count ?? undefined,
+            eval_count: ev.eval_count ?? undefined,
+            prompt_eval_duration_ns: ev.prompt_eval_duration_ns ?? undefined,
+            eval_duration_ns: ev.eval_duration_ns ?? undefined,
+            total_duration_ns: ev.total_duration_ns ?? undefined,
+          };
+        } else if (ev.kind === "error") {
+          set({ sendError: { message: ev.message } });
+        }
+      });
+
+      const generated_by: GeneratedBy = {
+        endpoint: current.session.default_endpoint,
+        model: req.model ?? current.session.model,
+        options: req.options ?? {},
+        request_body: req,
+        response_meta: responseMeta,
+      };
+      const afterAsst = await turnAppend(
+        current.session.id,
+        current.head_branch,
+        "assistant",
+        assistantText,
+        generated_by,
+      );
+      set({ current: afterAsst });
+    } catch (e) {
+      set({ sendError: { message: String(e) } });
+    } finally {
+      set({ streaming: false, streamingContent: "", streamingStartedAt: null });
+      await get().refresh();
+    }
   },
 
   async rerunWithParams(assistantTurnId, options) {
