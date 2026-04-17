@@ -464,6 +464,7 @@ pub async fn garak_scan(
         "--generations",
         &generations.to_string(),
     ])
+    .env("PYTHONIOENCODING", "utf-8")
     .stdout(Stdio::piped())
     .stderr(Stdio::piped())
     .kill_on_drop(true);
