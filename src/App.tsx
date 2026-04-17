@@ -12,7 +12,9 @@ import { SettingsModal } from "./components/SettingsModal";
 import { ShortcutsOverlay } from "./components/ShortcutsOverlay";
 import { Timeline } from "./components/Timeline";
 import { WelcomeModal } from "./components/WelcomeModal";
+import { formatCost } from "./lib/format";
 import { settingsLoad } from "./lib/ipc";
+import { computeSessionStats } from "./lib/stats";
 import { useLoom } from "./lib/store";
 import "./App.css";
 
@@ -223,6 +225,38 @@ function App() {
                     </code>
                   </div>
                 )}
+                {/* feat-loom-043: session-wide observability roll-up */}
+                {(() => {
+                  const stats = computeSessionStats(current);
+                  if (
+                    stats.total_cost_usd === 0 &&
+                    stats.total_input_tokens === 0 &&
+                    stats.total_output_tokens === 0
+                  ) {
+                    return null;
+                  }
+                  return (
+                    <div className="session-stats">
+                      <span>
+                        {stats.total_input_tokens.toLocaleString()} in ·{" "}
+                        {stats.total_output_tokens.toLocaleString()} out
+                      </span>
+                      {stats.total_cached_tokens > 0 && (
+                        <span>{stats.total_cached_tokens.toLocaleString()} cached</span>
+                      )}
+                      {stats.total_cost_usd > 0 && (
+                        <span className="session-stats-cost">
+                          {formatCost(stats.total_cost_usd)}
+                        </span>
+                      )}
+                      {stats.total_duration_ms > 0 && (
+                        <span>
+                          {(stats.total_duration_ms / 1000).toFixed(1)}s
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 {/* Session tags */}
                 <div className="session-tag-editor">
                   {(current.session.tags ?? []).map((t) => (

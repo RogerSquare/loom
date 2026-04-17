@@ -1869,6 +1869,21 @@ kbd {
   border-color: var(--accent);
 }
 
+/* feat-loom-043: session-stats roll-up */
+.session-stats {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: "SF Mono", Consolas, monospace;
+  flex-wrap: wrap;
+}
+
+.session-stats-cost {
+  color: var(--accent);
+}
+
 /* feat-loom-043: observability pills */
 .provider-pill,
 .model-pill,
