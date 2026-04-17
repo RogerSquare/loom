@@ -95,6 +95,10 @@ export const TurnCard = memo(function TurnCard({
     pinTurn(turn.id, !pinned);
   };
 
+  const isAssistant = turn.role === "assistant";
+  const hasParent = !!turn.parent;
+  const hasSiblings = siblings.length > 0;
+
   return (
     <div
       className={
@@ -104,6 +108,17 @@ export const TurnCard = memo(function TurnCard({
         (pinned ? " pinned" : "")
       }
     >
+      {/* ── Pin gutter ── */}
+      {!streaming && !isRoot && (
+        <button
+          className={`turn-pin-gutter${pinned ? " pinned" : ""}`}
+          onClick={togglePin}
+          title={pinned ? "unpin (allow rolling out of context)" : "pin (always include in context)"}
+          aria-label={pinned ? "unpin turn" : "pin turn"}
+        />
+      )}
+
+      {/* ── Header: role + timestamp ── */}
       <div className="turn-header">
         <span className="role">
           {ROLE_LABEL[displayed.role]}
@@ -117,7 +132,7 @@ export const TurnCard = memo(function TurnCard({
                   setSwipeOffset((o) => o - 1);
                 }}
               >
-                ‹
+                &#8249;
               </button>
               <span className="swipe-counter">
                 {swipeIdx + 1}/{allVersions.length}
@@ -130,7 +145,7 @@ export const TurnCard = memo(function TurnCard({
                   setSwipeOffset((o) => o + 1);
                 }}
               >
-                ›
+                &#8250;
               </button>
             </span>
           )}
@@ -138,57 +153,125 @@ export const TurnCard = memo(function TurnCard({
           {excluded && (
             <span
               className="excluded-badge"
-              title="Omitted from outbound context. Lower the context_limit or pin this turn to include it."
+              title="Omitted from outbound context"
             >
               excluded
             </span>
           )}
         </span>
-        <div className="turn-header-right">
-          {!streaming && (
+        <span className="timestamp">
+          {new Date(turn.created_at).toLocaleTimeString()}
+        </span>
+      </div>
+
+      {/* ── Thinking panel ── */}
+      {displayed.thinking && (
+        <details
+          className="thinking-panel"
+          open={thinkingOpen}
+          onToggle={(e) =>
+            setThinkingOpen((e.currentTarget as HTMLDetailsElement).open)
+          }
+        >
+          <summary>
+            thinking ({displayed.thinking.split(/\s+/).filter(Boolean).length} words)
+          </summary>
+          <pre className="thinking-body">{displayed.thinking}</pre>
+        </details>
+      )}
+
+      {/* ── Body ── */}
+      {displayed.logprobs && displayed.logprobs.length > 0 ? (
+        <LogprobsBody logprobs={displayed.logprobs} />
+      ) : (
+        <pre className="turn-body">
+          {displayed.content || (streaming ? "\u258D" : "")}
+        </pre>
+      )}
+
+      {/* ── Annotations ── */}
+      {annotations.length > 0 && (
+        <div className="annotations">
+          {annotations.map((a, i) => (
+            <span key={i} className="annotation-tag">
+              {a}
+              <button className="annotation-rm" onClick={() => removeNote(i)}>
+                x
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {addingNote && (
+        <div className="annotation-input-row">
+          <input
+            className="annotation-input"
+            autoFocus
+            placeholder="type a note..."
+            value={noteInput}
+            onChange={(e) => setNoteInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addNote();
+              else if (e.key === "Escape") setAddingNote(false);
+            }}
+          />
+          <button onClick={addNote} disabled={!noteInput.trim()}>
+            add
+          </button>
+        </div>
+      )}
+
+      {/* ── Footer: response meta ── */}
+      {(prompt != null || reply != null || total != null || seed != null) && (
+        <div className="turn-footer">
+          {prompt != null && <span>prompt: {prompt}</span>}
+          {reply != null && <span>reply: {reply}</span>}
+          {total != null && <span>{(total / 1_000_000).toFixed(0)} ms</span>}
+          {seed != null && (
             <button
-              className="edit-button note-button"
-              onClick={() => setAddingNote((v) => !v)}
-              title="add a note to this turn"
-              aria-label="add note"
+              className="seed-pill"
+              onClick={copySeed}
+              title="click to copy seed + load into composer"
             >
-              note
+              seed: {seed}
             </button>
           )}
-          {!streaming && !isRoot && (
+        </div>
+      )}
+
+      {/* ── Hover action toolbar ── */}
+      {!streaming && (
+        <div className="turn-toolbar">
+          {/* Primary: edit */}
+          {onEdit && (
             <button
-              className={pinned ? "pin-button pinned" : "pin-button"}
-              onClick={togglePin}
-              title={pinned ? "unpin (allow rolling out of context)" : "pin (always include in context)"}
-              aria-label={pinned ? "unpin turn" : "pin turn"}
+              className="toolbar-btn"
+              onClick={() => onEdit(turn)}
+              title="fork from this turn"
             >
-              {pinned ? "📌" : "📍"}
+              edit
             </button>
           )}
-          <span className="timestamp">
-            {new Date(turn.created_at).toLocaleTimeString()}
-          </span>
-          {!streaming && onCompareAll && siblings.length >= 2 && (
-            <button
-              className="edit-button"
-              onClick={() => onCompareAll([turn, ...siblings])}
-              title="compare all siblings side-by-side"
-            >
-              all ({siblings.length + 1})
-            </button>
+
+          {/* Divider if we have more actions */}
+          {(isAssistant || hasSiblings) && onEdit && (
+            <span className="toolbar-divider" />
           )}
-          {!streaming && onCompare && siblings.length > 0 && (
+
+          {/* Compare group */}
+          {hasSiblings && onCompare && (
             <div
               className="compare-menu-wrap"
               ref={menuRef}
               onClick={(e) => e.stopPropagation()}
             >
               <button
-                className="edit-button"
+                className="toolbar-btn"
                 onClick={() => setCompareOpen((v) => !v)}
-                title="compare with sibling turn"
+                title="compare with sibling"
               >
-                compare ({siblings.length})
+                compare
               </button>
               {compareOpen && (
                 <div className="compare-menu">
@@ -211,117 +294,68 @@ export const TurnCard = memo(function TurnCard({
               )}
             </div>
           )}
-          {onJudge && !streaming && turn.role === "assistant" && (
+
+          {onCompareAll && siblings.length >= 2 && (
             <button
-              className="edit-button"
-              onClick={() => onJudge(turn)}
-              title="judge this response with a second model"
+              className="toolbar-btn"
+              onClick={() => onCompareAll([turn, ...siblings])}
+              title="compare all siblings"
             >
-              judge
+              all ({siblings.length + 1})
             </button>
           )}
-          {!streaming && turn.role === "assistant" && turn.parent && (
-            <div className="compare-menu-wrap">
-              <button
-                className="edit-button"
-                onClick={() => setRerunOpen((v) => !v)}
-                title="rerun with different sampling parameters"
-              >
-                rerun
-              </button>
-              {rerunOpen && (
-                <RerunPopover
-                  turn={turn}
-                  onClose={() => setRerunOpen(false)}
-                />
-              )}
-            </div>
+
+          {/* Evaluate group (assistant-only) */}
+          {isAssistant && hasParent && (
+            <>
+              {hasSiblings && <span className="toolbar-divider" />}
+              <div className="compare-menu-wrap">
+                <button
+                  className="toolbar-btn"
+                  onClick={() => setRerunOpen((v) => !v)}
+                  title="rerun with different params"
+                >
+                  rerun
+                </button>
+                {rerunOpen && (
+                  <RerunPopover
+                    turn={turn}
+                    onClose={() => setRerunOpen(false)}
+                  />
+                )}
+              </div>
+            </>
           )}
-          {onSweep && !streaming && turn.role === "assistant" && (
+
+          {onSweep && isAssistant && (
             <button
-              className="edit-button"
+              className="toolbar-btn"
               onClick={() => onSweep(turn)}
-              title="run a variance sweep from this turn's prompt"
+              title="variance sweep"
             >
               sweep
             </button>
           )}
-          {onEdit && !streaming && (
+
+          {onJudge && isAssistant && (
             <button
-              className="edit-button"
-              onClick={() => onEdit(turn)}
-              title="fork from this turn"
+              className="toolbar-btn"
+              onClick={() => onJudge(turn)}
+              title="LLM-as-judge"
             >
-              edit
+              judge
             </button>
           )}
-        </div>
-      </div>
-      {displayed.thinking && (
-        <details
-          className="thinking-panel"
-          open={thinkingOpen}
-          onToggle={(e) =>
-            setThinkingOpen((e.currentTarget as HTMLDetailsElement).open)
-          }
-        >
-          <summary>
-            thinking ({displayed.thinking.split(/\s+/).filter(Boolean).length} words)
-          </summary>
-          <pre className="thinking-body">{displayed.thinking}</pre>
-        </details>
-      )}
-      {displayed.logprobs && displayed.logprobs.length > 0 ? (
-        <LogprobsBody logprobs={displayed.logprobs} />
-      ) : (
-        <pre className="turn-body">
-          {displayed.content || (streaming ? "▍" : "")}
-        </pre>
-      )}
-      {annotations.length > 0 && (
-        <div className="annotations">
-          {annotations.map((a, i) => (
-            <span key={i} className="annotation-tag">
-              {a}
-              <button className="annotation-rm" onClick={() => removeNote(i)}>
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      {addingNote && (
-        <div className="annotation-input-row">
-          <input
-            className="annotation-input"
-            autoFocus
-            placeholder="type a note…"
-            value={noteInput}
-            onChange={(e) => setNoteInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") addNote();
-              else if (e.key === "Escape") setAddingNote(false);
-            }}
-          />
-          <button onClick={addNote} disabled={!noteInput.trim()}>
-            add
+
+          {/* Meta group */}
+          <span className="toolbar-divider" />
+          <button
+            className="toolbar-btn"
+            onClick={() => setAddingNote((v) => !v)}
+            title="add note"
+          >
+            note
           </button>
-        </div>
-      )}
-      {(prompt != null || reply != null || total != null || seed != null) && (
-        <div className="turn-footer">
-          {prompt != null && <span>prompt: {prompt}</span>}
-          {reply != null && <span>reply: {reply}</span>}
-          {total != null && <span>{(total / 1_000_000).toFixed(0)} ms</span>}
-          {seed != null && (
-            <button
-              className="seed-pill"
-              onClick={copySeed}
-              title="click to copy seed + load into composer"
-            >
-              seed: {seed}
-            </button>
-          )}
         </div>
       )}
     </div>

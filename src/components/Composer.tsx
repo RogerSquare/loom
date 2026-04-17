@@ -7,16 +7,20 @@ import { useMemo, useState } from "react";
 import { buildContextMessages } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
-const extensions = [
-  markdown(),
-  EditorView.lineWrapping,
-  EditorView.theme({
-    "&": { backgroundColor: "transparent", fontSize: "0.9rem" },
-    ".cm-content": { padding: "0.6rem 0" },
-    ".cm-focused": { outline: "none" },
-    ".cm-gutters": { display: "none" },
-  }),
-];
+const cmTheme = EditorView.theme({
+  "&": { backgroundColor: "transparent", fontSize: "15px" },
+  ".cm-content": { padding: "8px 0", caretColor: "var(--accent)" },
+  ".cm-focused": { outline: "none" },
+  ".cm-gutters": { display: "none" },
+  ".cm-cursor": { borderLeftColor: "var(--accent)" },
+  ".cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.2) !important" },
+  ".cm-activeLine": { backgroundColor: "transparent" },
+  ".cm-line": { color: "var(--fg)" },
+  "&.cm-focused .cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.25) !important" },
+  ".cm-placeholder": { color: "var(--dim)" },
+});
+
+const extensions = [markdown(), EditorView.lineWrapping, cmTheme];
 
 export function Composer() {
   const streaming = useLoom((s) => s.streaming);
@@ -37,6 +41,7 @@ export function Composer() {
   const setRawJsonMode = useLoom((s) => s.setRawJsonMode);
   const sendRawJson = useLoom((s) => s.sendRawJson);
   const [rawJson, setRawJson] = useState("");
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   const [content, setContent] = useState("");
   const [temperature, setTemperature] = useState(0.7);
@@ -53,10 +58,15 @@ export function Composer() {
       jsonLang(),
       EditorView.lineWrapping,
       EditorView.theme({
-        "&": { backgroundColor: "transparent", fontSize: "0.8rem" },
-        ".cm-content": { padding: "0.4rem 0" },
+        "&": { backgroundColor: "transparent", fontSize: "13px" },
+        ".cm-content": { padding: "4px 0", caretColor: "var(--accent)" },
         ".cm-focused": { outline: "none" },
-        ".cm-gutters": { display: "none" },
+        ".cm-gutters": { backgroundColor: "transparent", color: "var(--dim)", borderRight: "none" },
+        ".cm-cursor": { borderLeftColor: "var(--accent)" },
+        ".cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.2) !important" },
+        ".cm-activeLine": { backgroundColor: "rgba(100,150,255,0.06)" },
+        ".cm-line": { color: "var(--fg)" },
+        ".cm-placeholder": { color: "var(--dim)" },
       }),
     ],
     [],
@@ -127,98 +137,7 @@ export function Composer() {
 
   return (
     <div className="composer">
-      <div className="composer-options">
-        <label>
-          <span>temp</span>
-          <input
-            type="number"
-            min={0}
-            max={2}
-            step={0.05}
-            value={temperature}
-            onChange={(e) => setTemperature(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          <span>top_p</span>
-          <input
-            type="number"
-            min={0}
-            max={1}
-            step={0.05}
-            value={topP}
-            onChange={(e) => setTopP(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          <span>ctx</span>
-          <input
-            type="number"
-            min={512}
-            max={131072}
-            step={512}
-            value={numCtx}
-            onChange={(e) => setNumCtx(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          <span>seed</span>
-          <input
-            type="text"
-            placeholder="(random)"
-            value={seed}
-            onChange={(e) => setSeed(e.target.value)}
-          />
-        </label>
-        <label className="toggle-label" title="capture per-token logprobs (adds storage)">
-          <input
-            type="checkbox"
-            checked={logprobsEnabled}
-            onChange={(e) => setLogprobsEnabled(e.target.checked)}
-          />
-          <span>logprobs</span>
-        </label>
-        <label>
-          <span>format</span>
-          <select
-            value={outputFormat}
-            onChange={(e) =>
-              setOutputFormat(e.target.value as "none" | "json" | "schema")
-            }
-          >
-            <option value="none">none</option>
-            <option value="json">JSON</option>
-            <option value="schema">schema</option>
-          </select>
-        </label>
-      </div>
-      {outputFormat === "schema" && (
-        <>
-          <textarea
-            className={`schema-editor${schemaError ? " schema-invalid" : ""}`}
-            value={outputSchema}
-            onChange={(e) => {
-              setOutputSchema(e.target.value);
-              setSchemaError(null);
-            }}
-            onBlur={() => {
-              if (!outputSchema.trim()) return;
-              try {
-                JSON.parse(outputSchema);
-                setSchemaError(null);
-              } catch (e) {
-                setSchemaError(String(e));
-              }
-            }}
-            placeholder='{"type": "object", "properties": { ... }}'
-            rows={3}
-          />
-          {schemaError && (
-            <div className="composer-error">{schemaError}</div>
-          )}
-        </>
-      )}
-
+      {/* ── Editor area ── */}
       <div className="composer-editor" onKeyDown={onKeyDown}>
         {rawJsonMode ? (
           <>
@@ -238,8 +157,8 @@ export function Composer() {
                 }
               }}
               extensions={jsonExtensions}
-              theme="dark"
-              placeholder="edit the outbound JSON request…"
+              theme="none"
+              placeholder="edit the outbound JSON request..."
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
@@ -257,7 +176,7 @@ export function Composer() {
             onChange={setContent}
             extensions={extensions}
             theme="dark"
-            placeholder="message… (Ctrl+Enter to send)"
+            placeholder="message... (Ctrl+Enter to send)"
             basicSetup={{
               lineNumbers: false,
               foldGutter: false,
@@ -271,38 +190,143 @@ export function Composer() {
       {sendError && (
         <div className="composer-error">error: {sendError.message}</div>
       )}
-      <div className="row composer-actions">
-        <button
-          onClick={send}
-          disabled={
-            streaming ||
-            (rawJsonMode ? !rawJson.trim() : !content.trim())
-          }
-        >
-          {streaming
-            ? "streaming…"
-            : rawJsonMode
-              ? "send raw JSON"
-              : "send (Ctrl+Enter)"}
-        </button>
-        <button
-          className={rawJsonMode ? "toggle-active" : ""}
-          onClick={toggleRawJson}
-          title={
-            rawJsonMode
-              ? "switch to normal composer"
-              : "edit the outbound API request as raw JSON"
-          }
-        >
-          {rawJsonMode ? "← normal" : "{ } JSON"}
-        </button>
-        <span className="muted">
-          model: <strong>{current.session.model}</strong> · branch:{" "}
-          <strong>
-            {current.branches[current.head_branch]?.name ?? current.head_branch}
-          </strong>
-        </span>
+
+      {/* ── Action bar: context left, controls right ── */}
+      <div className="composer-bar">
+        <div className="composer-context">
+          <span className="muted">
+            {current.session.model}
+            {" / "}
+            {current.branches[current.head_branch]?.name ?? "main"}
+          </span>
+        </div>
+
+        <div className="composer-controls">
+          <button
+            className={`composer-icon-btn${optionsOpen ? " active" : ""}`}
+            onClick={() => setOptionsOpen((v) => !v)}
+            title="sampling options"
+            aria-label="toggle sampling options"
+          >
+            options
+          </button>
+          <button
+            className={`composer-icon-btn${rawJsonMode ? " active" : ""}`}
+            onClick={toggleRawJson}
+            title={rawJsonMode ? "switch to normal" : "edit raw JSON request"}
+            aria-label="toggle raw JSON mode"
+          >
+            {"{ }"}
+          </button>
+          <button
+            className="composer-send"
+            onClick={send}
+            disabled={
+              streaming ||
+              (rawJsonMode ? !rawJson.trim() : !content.trim())
+            }
+          >
+            {streaming ? "streaming..." : "send"}
+          </button>
+        </div>
       </div>
+
+      {/* ── Collapsible options panel ── */}
+      {optionsOpen && (
+        <div className="composer-options-panel">
+          <div className="composer-options">
+            <label>
+              <span>temp</span>
+              <input
+                type="number"
+                min={0}
+                max={2}
+                step={0.05}
+                value={temperature}
+                onChange={(e) => setTemperature(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              <span>top_p</span>
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.05}
+                value={topP}
+                onChange={(e) => setTopP(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              <span>ctx</span>
+              <input
+                type="number"
+                min={512}
+                max={131072}
+                step={512}
+                value={numCtx}
+                onChange={(e) => setNumCtx(Number(e.target.value))}
+              />
+            </label>
+            <label>
+              <span>seed</span>
+              <input
+                type="text"
+                placeholder="(random)"
+                value={seed}
+                onChange={(e) => setSeed(e.target.value)}
+              />
+            </label>
+            <label className="toggle-label" title="capture per-token logprobs">
+              <input
+                type="checkbox"
+                checked={logprobsEnabled}
+                onChange={(e) => setLogprobsEnabled(e.target.checked)}
+              />
+              <span>logprobs</span>
+            </label>
+            <label>
+              <span>format</span>
+              <select
+                value={outputFormat}
+                onChange={(e) =>
+                  setOutputFormat(e.target.value as "none" | "json" | "schema")
+                }
+              >
+                <option value="none">none</option>
+                <option value="json">JSON</option>
+                <option value="schema">schema</option>
+              </select>
+            </label>
+          </div>
+          {outputFormat === "schema" && (
+            <>
+              <textarea
+                className={`schema-editor${schemaError ? " schema-invalid" : ""}`}
+                value={outputSchema}
+                onChange={(e) => {
+                  setOutputSchema(e.target.value);
+                  setSchemaError(null);
+                }}
+                onBlur={() => {
+                  if (!outputSchema.trim()) return;
+                  try {
+                    JSON.parse(outputSchema);
+                    setSchemaError(null);
+                  } catch (e) {
+                    setSchemaError(String(e));
+                  }
+                }}
+                placeholder='{"type": "object", "properties": { ... }}'
+                rows={3}
+              />
+              {schemaError && (
+                <div className="composer-error">{schemaError}</div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
