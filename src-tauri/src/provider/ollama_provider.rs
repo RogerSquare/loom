@@ -3,11 +3,10 @@ use std::pin::Pin;
 use async_trait::async_trait;
 use futures::{Stream, StreamExt};
 
-use crate::error::{LoomError, Result};
+use crate::error::Result;
 use crate::ollama::chat::{
     chat_stream, ChatRequest, Message, Options, Role, StreamEvent,
 };
-use crate::ollama::streaming::NdjsonBuffer;
 use crate::provider::{Provider, ProviderMessage, ProviderModelInfo, ProviderOptions};
 
 pub struct OllamaProvider {

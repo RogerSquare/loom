@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::Arc;
 
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -17,6 +19,11 @@ use crate::ollama::{
     templates::{render_template, ChatTemplate},
     ModelInfo,
 };
+use crate::provider::{
+    anthropic::AnthropicProvider,
+    ollama_provider::OllamaProvider,
+    Provider, ProviderMessage, ProviderModelInfo, ProviderOptions,
+};
 use crate::store::{
     io as store_io,
     ops as store_ops,
@@ -30,6 +37,7 @@ pub struct LoomState {
     pub http: reqwest::Client,
     pub ollama_base: String,
     pub garak_abort: std::sync::Mutex<Option<tokio::task::AbortHandle>>,
+    pub providers: HashMap<String, Arc<dyn Provider>>,
 }
 
 impl LoomState {
@@ -38,10 +46,23 @@ impl LoomState {
             .no_proxy()
             .build()
             .expect("failed to build reqwest HTTP client — network stack may be misconfigured");
+
+        let ollama_base = "http://localhost:11434".to_string();
+        let mut providers: HashMap<String, Arc<dyn Provider>> = HashMap::new();
+        providers.insert(
+            "ollama".to_string(),
+            Arc::new(OllamaProvider::new(ollama_base.clone())),
+        );
+        providers.insert(
+            "anthropic".to_string(),
+            Arc::new(AnthropicProvider::new()),
+        );
+
         Self {
             http,
-            ollama_base: "http://localhost:11434".to_string(),
+            ollama_base,
             garak_abort: std::sync::Mutex::new(None),
+            providers,
         }
     }
 }
@@ -155,6 +176,95 @@ pub async fn ollama_chat(
         }
     }
     Ok(())
+}
+
+// ────────────────────────────── Provider-agnostic LLM commands ───────────────
+
+/// Unified chat streaming command. Routes to the correct provider based on
+/// `provider_id`. Emits the same StreamEvent (Delta/Done/Error) as ollama_chat,
+/// so the frontend doesn't need to change its event handling.
+#[tauri::command]
+pub async fn llm_chat(
+    app: AppHandle,
+    state: tauri::State<'_, LoomState>,
+    provider_id: String,
+    model: String,
+    messages: Vec<ProviderMessage>,
+    options: ProviderOptions,
+    on_chunk: Channel<StreamEvent>,
+) -> Result<()> {
+    let provider = state
+        .providers
+        .get(&provider_id)
+        .ok_or_else(|| LoomError::Validation(format!("unknown provider: {provider_id}")))?
+        .clone();
+
+    // Load API key from settings
+    let settings = settings_load_inner(&app)?;
+    let api_key = settings.api_keys.get(&provider_id).cloned();
+
+    let stream = provider
+        .chat_stream(
+            &state.http,
+            &model,
+            messages,
+            &options,
+            api_key.as_deref(),
+        )
+        .await?;
+    tokio::pin!(stream);
+
+    while let Some(event_result) = stream.next().await {
+        match event_result {
+            Ok(event) => {
+                on_chunk
+                    .send(event)
+                    .map_err(|e| LoomError::Channel(e.to_string()))?;
+            }
+            Err(e) => {
+                let msg = e.to_string();
+                if on_chunk
+                    .send(StreamEvent::Error { message: msg })
+                    .is_err()
+                {
+                    eprintln!("[loom] stream channel closed while sending error");
+                }
+                return Err(e);
+            }
+        }
+    }
+    Ok(())
+}
+
+/// List models for a specific provider.
+#[tauri::command]
+pub async fn llm_list_models(
+    app: AppHandle,
+    state: tauri::State<'_, LoomState>,
+    provider_id: String,
+) -> Result<Vec<ProviderModelInfo>> {
+    let provider = state
+        .providers
+        .get(&provider_id)
+        .ok_or_else(|| LoomError::Validation(format!("unknown provider: {provider_id}")))?
+        .clone();
+
+    let settings = settings_load_inner(&app)?;
+    let api_key = settings.api_keys.get(&provider_id).cloned();
+
+    provider.list_models(&state.http, api_key.as_deref()).await
+}
+
+/// List all registered provider IDs and display names.
+#[tauri::command]
+pub async fn llm_list_providers(
+    state: tauri::State<'_, LoomState>,
+) -> Result<Vec<(String, String)>> {
+    Ok(state
+        .providers
+        .iter()
+        .map(|(id, p)| (id.clone(), p.display_name().to_string()))
+        .collect())
 }
 
 // ────────────────────────────── Session commands ─────────────────────────────
@@ -450,6 +560,9 @@ pub struct AppSettings {
     pub theme: String,
     #[serde(default)]
     pub first_run_done: bool,
+    /// API keys per provider (e.g. "anthropic" -> "sk-ant-...").
+    #[serde(default)]
+    pub api_keys: HashMap<String, String>,
 }
 
 fn default_endpoint() -> String { "http://localhost:11434".to_string() }
@@ -469,6 +582,7 @@ impl Default for AppSettings {
             default_context_limit: None,
             theme: default_theme(),
             first_run_done: false,
+            api_keys: HashMap::new(),
         }
     }
 }
@@ -481,15 +595,19 @@ fn settings_path(app: &AppHandle) -> Result<PathBuf> {
     Ok(base.join("settings.json"))
 }
 
-#[tauri::command]
-pub async fn settings_load(app: AppHandle) -> Result<AppSettings> {
-    let path = settings_path(&app)?;
+fn settings_load_inner(app: &AppHandle) -> Result<AppSettings> {
+    let path = settings_path(app)?;
     if !path.exists() {
         return Ok(AppSettings::default());
     }
     let bytes = std::fs::read(&path).map_err(LoomError::Io)?;
     let settings: AppSettings = serde_json::from_slice(&bytes).unwrap_or_default();
     Ok(settings)
+}
+
+#[tauri::command]
+pub async fn settings_load(app: AppHandle) -> Result<AppSettings> {
+    settings_load_inner(&app)
 }
 
 #[tauri::command]

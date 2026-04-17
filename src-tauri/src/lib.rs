@@ -37,6 +37,9 @@ pub fn run() {
             commands::garak_scan,
             commands::garak_cancel,
             commands::ollama_continue_from_prefill,
+            commands::llm_chat,
+            commands::llm_list_models,
+            commands::llm_list_providers,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
