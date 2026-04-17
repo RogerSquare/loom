@@ -35,8 +35,23 @@ export function TurnCard({
 }: Props) {
   const current = useLoom((s) => s.current);
   const pinTurn = useLoom((s) => s.pinTurn);
+  const setSeedDraft = useLoom((s) => s.setSeedDraft);
+  const annotateTurn = useLoom((s) => s.annotateTurn);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [thinkingOpen, setThinkingOpen] = useState(false);
+  const [rerunOpen, setRerunOpen] = useState(false);
+  const [noteInput, setNoteInput] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const [swipeOffset, setSwipeOffset] = useState(0);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const siblings = current ? findSiblings(current, turn.id) : [];
+  const allVersions = siblings.length > 0 ? [turn, ...siblings] : [turn];
+  const hasSwipe = allVersions.length > 1;
+  const swipeIdx =
+    ((swipeOffset % allVersions.length) + allVersions.length) %
+    allVersions.length;
+  const displayed = allVersions[swipeIdx];
 
   const meta = displayed.generated_by?.response_meta;
   const prompt = meta?.prompt_eval_count;
@@ -45,21 +60,6 @@ export function TurnCard({
   const seed = displayed.generated_by?.options?.seed;
   const isEdit = displayed.annotations?.includes("edit");
   const pinned = !!displayed.pinned;
-  const setSeedDraft = useLoom((s) => s.setSeedDraft);
-  const annotateTurn = useLoom((s) => s.annotateTurn);
-  const [thinkingOpen, setThinkingOpen] = useState(false);
-  const [rerunOpen, setRerunOpen] = useState(false);
-  const [noteInput, setNoteInput] = useState("");
-  const [addingNote, setAddingNote] = useState(false);
-  const [swipeOffset, setSwipeOffset] = useState(0);
-
-  const allVersions = siblings.length > 0 ? [turn, ...siblings] : [turn];
-  const hasSwipe = allVersions.length > 1;
-  const swipeIdx =
-    ((swipeOffset % allVersions.length) + allVersions.length) %
-    allVersions.length;
-  const displayed = allVersions[swipeIdx];
-
   const annotations = displayed.annotations?.filter((a) => a !== "edit") ?? [];
 
   const addNote = () => {
@@ -79,8 +79,6 @@ export function TurnCard({
     setSeedDraft(seed.toString());
     void navigator.clipboard.writeText(seed.toString()).catch(() => {});
   };
-
-  const siblings = current ? findSiblings(current, turn.id) : [];
 
   useEffect(() => {
     if (!compareOpen) return;
