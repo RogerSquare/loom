@@ -12,6 +12,7 @@ interface Props {
   isRoot?: boolean;
   onEdit?: (turn: Turn) => void;
   onCompare?: (left: Turn, right: Turn) => void;
+  onCompareAll?: (turns: Turn[]) => void;
   onSweep?: (turn: Turn) => void;
 }
 
