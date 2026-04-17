@@ -56,6 +56,9 @@ pub struct Session {
     /// None = random each send (current behavior).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_seed: Option<i64>,
+    /// User-defined tags for session organization and filtering.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -144,6 +147,7 @@ pub struct SessionSummary {
     pub model: String,
     pub turn_count: usize,
     pub branch_count: usize,
+    pub tags: Vec<String>,
 }
 
 #[cfg(test)]

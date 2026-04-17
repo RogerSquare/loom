@@ -117,6 +117,7 @@ export interface Session {
   default_endpoint: string;
   context_limit?: number;
   default_seed?: number;
+  tags?: string[];
 }
 
 export interface SessionFile {
@@ -134,6 +135,7 @@ export interface SessionSummary {
   model: string;
   turn_count: number;
   branch_count: number;
+  tags?: string[];
 }
 
 // ───────────────────────────── Ollama ─────────────────────────────
@@ -254,6 +256,18 @@ export const sessionSetContextLimit = (
   limit: number | null,
 ): Promise<SessionFile> =>
   invoke("session_set_context_limit", { sessionId: session_id, limit });
+
+export const sessionSetTags = (
+  session_id: string,
+  tags: string[],
+): Promise<SessionFile> =>
+  invoke("session_set_tags", { sessionId: session_id, tags });
+
+export const sessionSetModel = (
+  session_id: string,
+  model: string,
+): Promise<SessionFile> =>
+  invoke("session_set_model", { sessionId: session_id, model });
 
 export type GarakEvent =
   | { kind: "stdout"; line: string }

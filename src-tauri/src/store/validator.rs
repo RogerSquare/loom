@@ -143,6 +143,7 @@ mod tests {
                 default_endpoint: "http://localhost:11434/api/chat".to_string(),
                 context_limit: None,
                 default_seed: None,
+                tags: vec![],
             },
             turns,
             branches,

@@ -17,6 +17,8 @@ import {
   sessionOpen,
   sessionSave,
   sessionSetContextLimit,
+  sessionSetModel,
+  sessionSetTags,
   turnAppend,
   turnPin,
   type ChatOptions,
@@ -136,6 +138,8 @@ interface LoomStore {
   pinTurn: (turnId: string, pinned: boolean) => Promise<void>;
   annotateTurn: (turnId: string, annotations: string[]) => Promise<void>;
   setContextLimit: (limit: number | null) => Promise<void>;
+  setSessionTags: (tags: string[]) => Promise<void>;
+  setSessionModel: (model: string) => Promise<void>;
 }
 
 export const useLoom = create<LoomStore>((set, get) => ({
@@ -444,6 +448,22 @@ export const useLoom = create<LoomStore>((set, get) => ({
     if (!current) return;
     const updated = await sessionSetContextLimit(current.session.id, limit);
     set({ current: updated });
+  },
+
+  async setSessionTags(tags) {
+    const { current } = get();
+    if (!current) return;
+    const updated = await sessionSetTags(current.session.id, tags);
+    set({ current: updated });
+    await get().refresh();
+  },
+
+  async setSessionModel(model) {
+    const { current } = get();
+    if (!current) return;
+    const updated = await sessionSetModel(current.session.id, model);
+    set({ current: updated });
+    await get().refresh();
   },
 
   async startGarak(probes, generations) {
