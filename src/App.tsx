@@ -8,7 +8,9 @@ import { ExportModal } from "./components/ExportModal";
 import { GarakModal } from "./components/GarakModal";
 import { SessionSidebar } from "./components/SessionSidebar";
 import { SettingsModal } from "./components/SettingsModal";
+import { ShortcutsOverlay } from "./components/ShortcutsOverlay";
 import { Timeline } from "./components/Timeline";
+import { WelcomeModal } from "./components/WelcomeModal";
 import { useLoom } from "./lib/store";
 import "./App.css";
 
@@ -25,6 +27,10 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [graphVisible, setGraphVisible] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(
+    () => !localStorage.getItem("loom_first_run_done"),
+  );
 
   useEffect(() => {
     const handler = () => setSettingsOpen(true);
@@ -35,6 +41,19 @@ function App() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "?" && !e.ctrlKey && !e.metaKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const commitTitle = () => {
     if (titleDraft != null && titleDraft.trim().length > 0) {
@@ -187,6 +206,12 @@ function App() {
       </main>
       {settingsOpen && (
         <SettingsModal onClose={() => setSettingsOpen(false)} />
+      )}
+      {showWelcome && (
+        <WelcomeModal onClose={() => setShowWelcome(false)} />
+      )}
+      {shortcutsOpen && (
+        <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />
       )}
       {garakOpen && <GarakModal onClose={() => setGarakOpen(false)} />}
       {exportOpen && current && (
