@@ -292,6 +292,69 @@ html,
   opacity: 1;
 }
 
+.annotations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 0.4rem;
+}
+
+.annotation-tag {
+  background: #2a3040;
+  color: #a0b8d0;
+  font-size: 0.7rem;
+  font-family: "SF Mono", Consolas, monospace;
+  padding: 2px 8px;
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.annotation-rm {
+  background: transparent;
+  border: none;
+  color: #a0b8d0;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.annotation-rm:hover {
+  color: var(--danger);
+}
+
+.annotation-input-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 0.4rem;
+}
+
+.annotation-input {
+  flex: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.annotation-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.note-button {
+  opacity: 0;
+}
+
+.turn:hover .note-button {
+  opacity: 1;
+}
+
 .excluded-badge {
   margin-left: 0.5rem;
   padding: 1px 6px;

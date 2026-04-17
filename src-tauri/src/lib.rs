@@ -24,6 +24,7 @@ pub fn run() {
             commands::branch_fork_from_edit,
             commands::branch_checkout,
             commands::turn_pin,
+            commands::turn_annotate,
             commands::session_set_context_limit,
             commands::garak_scan,
             commands::garak_cancel,

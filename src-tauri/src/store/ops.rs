@@ -101,6 +101,19 @@ pub fn set_context_limit(file: &mut SessionFile, limit: Option<u32>) {
     file.session.context_limit = limit;
 }
 
+pub fn set_annotations(
+    file: &mut SessionFile,
+    turn_id: &TurnId,
+    annotations: Vec<String>,
+) -> Result<(), String> {
+    let t = file
+        .turns
+        .get_mut(turn_id)
+        .ok_or_else(|| format!("turn {turn_id} not found"))?;
+    t.annotations = annotations;
+    Ok(())
+}
+
 /// Split an assistant response into (reasoning, clean_content).
 /// Recognizes `<think>...</think>` blocks (DeepSeek-R1 / qwq convention).
 /// Multiple blocks are joined with a blank line. Unclosed `<think>` blocks

@@ -7,6 +7,7 @@ import {
   buildContextMessages,
   garakCancel,
   garakScan,
+  turnAnnotate,
   listModels,
   ollamaChat,
   ollamaContinueFromPrefill,
@@ -128,6 +129,7 @@ interface LoomStore {
   regenerateHead: (options: ChatOptions) => Promise<void>;
   renameSession: (title: string) => Promise<void>;
   pinTurn: (turnId: string, pinned: boolean) => Promise<void>;
+  annotateTurn: (turnId: string, annotations: string[]) => Promise<void>;
   setContextLimit: (limit: number | null) => Promise<void>;
 }
 
@@ -343,6 +345,13 @@ export const useLoom = create<LoomStore>((set, get) => ({
     const { current } = get();
     if (!current) return;
     const updated = await turnPin(current.session.id, turnId, pinned);
+    set({ current: updated });
+  },
+
+  async annotateTurn(turnId, annotations) {
+    const { current } = get();
+    if (!current) return;
+    const updated = await turnAnnotate(current.session.id, turnId, annotations);
     set({ current: updated });
   },
 

@@ -44,8 +44,24 @@ export function TurnCard({
   const isEdit = turn.annotations?.includes("edit");
   const pinned = !!turn.pinned;
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
+  const annotateTurn = useLoom((s) => s.annotateTurn);
   const [thinkingOpen, setThinkingOpen] = useState(false);
   const [rerunOpen, setRerunOpen] = useState(false);
+  const [noteInput, setNoteInput] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+
+  const annotations = turn.annotations?.filter((a) => a !== "edit") ?? [];
+
+  const addNote = () => {
+    if (!noteInput.trim()) return;
+    annotateTurn(turn.id, [...annotations, noteInput.trim()]);
+    setNoteInput("");
+    setAddingNote(false);
+  };
+
+  const removeNote = (idx: number) => {
+    annotateTurn(turn.id, annotations.filter((_, i) => i !== idx));
+  };
 
   const copySeed = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -92,6 +108,15 @@ export function TurnCard({
           )}
         </span>
         <div className="turn-header-right">
+          {!streaming && (
+            <button
+              className="edit-button note-button"
+              onClick={() => setAddingNote((v) => !v)}
+              title="add a note to this turn"
+            >
+              note
+            </button>
+          )}
           {!streaming && !isRoot && (
             <button
               className={pinned ? "pin-button pinned" : "pin-button"}
@@ -195,6 +220,36 @@ export function TurnCard({
         <pre className="turn-body">
           {turn.content || (streaming ? "▍" : "")}
         </pre>
+      )}
+      {annotations.length > 0 && (
+        <div className="annotations">
+          {annotations.map((a, i) => (
+            <span key={i} className="annotation-tag">
+              {a}
+              <button className="annotation-rm" onClick={() => removeNote(i)}>
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      {addingNote && (
+        <div className="annotation-input-row">
+          <input
+            className="annotation-input"
+            autoFocus
+            placeholder="type a note…"
+            value={noteInput}
+            onChange={(e) => setNoteInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") addNote();
+              else if (e.key === "Escape") setAddingNote(false);
+            }}
+          />
+          <button onClick={addNote} disabled={!noteInput.trim()}>
+            add
+          </button>
+        </div>
       )}
       {(prompt != null || reply != null || total != null || seed != null) && (
         <div className="turn-footer">

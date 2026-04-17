@@ -325,6 +325,21 @@ pub async fn turn_pin(
 }
 
 #[tauri::command]
+pub async fn turn_annotate(
+    app: AppHandle,
+    session_id: SessionId,
+    turn_id: TurnId,
+    annotations: Vec<String>,
+) -> Result<SessionFile> {
+    let dir = sessions_dir(&app)?;
+    let mut file = store_io::load_session(&dir, &session_id)?;
+    store_ops::set_annotations(&mut file, &turn_id, annotations)
+        .map_err(LoomError::Ollama)?;
+    store_io::write_session_atomic(&dir, &file)?;
+    Ok(file)
+}
+
+#[tauri::command]
 pub async fn session_set_context_limit(
     app: AppHandle,
     session_id: SessionId,

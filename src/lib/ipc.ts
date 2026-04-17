@@ -231,6 +231,17 @@ export const branchCheckout = (
 ): Promise<SessionFile> =>
   invoke("branch_checkout", { sessionId: session_id, branchId: branch_id });
 
+export const turnAnnotate = (
+  session_id: string,
+  turn_id: string,
+  annotations: string[],
+): Promise<SessionFile> =>
+  invoke("turn_annotate", {
+    sessionId: session_id,
+    turnId: turn_id,
+    annotations,
+  });
+
 export const turnPin = (
   session_id: string,
   turn_id: string,
