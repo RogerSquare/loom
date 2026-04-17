@@ -33,7 +33,11 @@ export function Timeline() {
     return { timeline: chain, excluded, rootId: chain[0]?.id ?? "" };
   }, [current]);
 
+  const lastScrollRef = useRef(0);
   useEffect(() => {
+    const now = Date.now();
+    if (now - lastScrollRef.current < 100) return; // throttle to ~10fps
+    lastScrollRef.current = now;
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }

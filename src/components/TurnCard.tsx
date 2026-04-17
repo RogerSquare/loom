@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import { findSiblings, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
@@ -24,7 +24,7 @@ const ROLE_LABEL: Record<Turn["role"], string> = {
   tool: "tool",
 };
 
-export function TurnCard({
+export const TurnCard = memo(function TurnCard({
   turn,
   streaming,
   excluded,
@@ -326,4 +326,9 @@ export function TurnCard({
       )}
     </div>
   );
-}
+}, (prev, next) =>
+  prev.turn === next.turn &&
+  prev.streaming === next.streaming &&
+  prev.excluded === next.excluded &&
+  prev.isRoot === next.isRoot
+);
