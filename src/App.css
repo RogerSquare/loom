@@ -160,7 +160,7 @@ html,
   line-height: 1;
   cursor: pointer;
   padding: 0;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
 }
 
 .icon-button:hover {
@@ -189,8 +189,10 @@ html,
   padding: 8px 20px;
   cursor: pointer;
   border-left: 2px solid transparent;
+
   min-height: 36px;
   transition: background 0.15s, border-color 0.15s;
+
 }
 
 .session-row:hover {
@@ -231,7 +233,7 @@ html,
   font-size: 1.1rem;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.1s;
+  transition: opacity 0.2s ease-out;
 }
 
 .delete-button:hover {
@@ -460,7 +462,7 @@ html,
   border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
 }
 
 .header-action:hover {
@@ -535,7 +537,7 @@ html,
   font-size: 0.85rem;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s ease-out;
   border-radius: 2px;
 }
 
@@ -720,7 +722,7 @@ html,
   border-radius: 3px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out;
 }
 
 .branch-tab:hover {
@@ -764,14 +766,14 @@ html,
   border-radius: 12px;
   padding: 12px 16px;
   background: var(--bg-1);
-  animation: fadeSlideIn 0.2s ease-out;
-  transition: opacity 0.2s, box-shadow 0.15s, border-color 0.15s;
+  animation: fadeSlideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 0.2s ease-out, box-shadow 0.2s ease-out, border-color 0.2s ease-out;
 }
 
 @keyframes fadeSlideIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -1450,7 +1452,7 @@ kbd {
   border-radius: 2px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s ease-out;
 }
 
 .turn:hover .edit-button {
@@ -1486,7 +1488,7 @@ kbd {
 
 .commit-graph-svg .node circle {
   fill: #2a2a2a;
-  transition: opacity 0.15s;
+  transition: opacity 0.2s ease-out;
 }
 
 .commit-graph-svg .node-system circle {
@@ -1524,7 +1526,7 @@ kbd {
   align-items: center;
   justify-content: center;
   z-index: 100;
-  animation: fadeIn 0.15s ease-out;
+  animation: fadeIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @keyframes fadeIn {
@@ -2072,7 +2074,7 @@ button {
   font-family: inherit;
   font-size: 15px;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+  transition: background 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out;
 }
 
 button:hover:not(:disabled) {
@@ -2211,6 +2213,65 @@ button:disabled {
 
 :root.light .composer-error {
   border-left-color: #ff3b30;
+}
+
+/* ─── Focus indicators (keyboard accessibility) ────��────────── */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+.icon-button:focus-visible,
+.branch-tab:focus-visible,
+.session-row:focus-visible,
+.swipe-arrow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.3);
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── High contrast ──────────────────────────────────────────── */
+
+@media (prefers-contrast: more) {
+  :root {
+    --border: #666;
+  }
+
+  :root.light {
+    --border: #999;
+  }
+
+  .turn,
+  .edit-panel,
+  .rerun-popover,
+  .compare-menu {
+    border-width: 2px;
+  }
+
+  button {
+    border-width: 2px;
+  }
 }
 
 /* ─── Responsive breakpoints ──────────────────────────────────── */
