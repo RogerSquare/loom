@@ -1066,6 +1066,29 @@ button.primary:hover:not(:disabled) {
   margin: 0;
 }
 
+.composer-options select {
+  width: 80px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+
+.schema-editor {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 3px;
+  resize: vertical;
+  width: 100%;
+}
+
 .composer-editor {
   background: var(--bg-2);
   border: 1px solid var(--border);

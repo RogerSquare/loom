@@ -79,6 +79,10 @@ interface LoomStore {
   setSeedDraft: (v: string) => void;
   logprobsEnabled: boolean;
   setLogprobsEnabled: (v: boolean) => void;
+  outputFormat: "none" | "json" | "schema";
+  outputSchema: string;
+  setOutputFormat: (v: "none" | "json" | "schema") => void;
+  setOutputSchema: (v: string) => void;
 
   // Variance sweep
   sweep: SweepState | null;
@@ -140,6 +144,10 @@ export const useLoom = create<LoomStore>((set, get) => ({
   setSeedDraft: (v) => set({ seedDraft: v }),
   logprobsEnabled: false,
   setLogprobsEnabled: (v) => set({ logprobsEnabled: v }),
+  outputFormat: "none",
+  outputSchema: "",
+  setOutputFormat: (v) => set({ outputFormat: v }),
+  setOutputSchema: (v) => set({ outputSchema: v }),
   sweep: null,
   garak: {
     running: false,
@@ -568,6 +576,19 @@ async function streamAssistantReply(
       content: t.content,
     }));
     const logprobsEnabled = get().logprobsEnabled;
+    const outputFormat = get().outputFormat;
+    const outputSchema = get().outputSchema;
+
+    let formatParam: unknown = undefined;
+    if (outputFormat === "json") {
+      formatParam = "json";
+    } else if (outputFormat === "schema" && outputSchema.trim()) {
+      try {
+        formatParam = JSON.parse(outputSchema);
+      } catch {
+        formatParam = "json";
+      }
+    }
 
     let assistantText = "";
     let responseMeta: GeneratedBy["response_meta"] = {};
@@ -580,6 +601,7 @@ async function streamAssistantReply(
         stream: true,
         options,
         ...(logprobsEnabled ? { logprobs: true, top_logprobs: 5 } : {}),
+        ...(formatParam !== undefined ? { format: formatParam } : {}),
       },
       (ev) => {
         if (ev.kind === "delta") {

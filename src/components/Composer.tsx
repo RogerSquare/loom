@@ -24,6 +24,10 @@ export function Composer() {
   const setSeedDraft = useLoom((s) => s.setSeedDraft);
   const logprobsEnabled = useLoom((s) => s.logprobsEnabled);
   const setLogprobsEnabled = useLoom((s) => s.setLogprobsEnabled);
+  const outputFormat = useLoom((s) => s.outputFormat);
+  const setOutputFormat = useLoom((s) => s.setOutputFormat);
+  const outputSchema = useLoom((s) => s.outputSchema);
+  const setOutputSchema = useLoom((s) => s.setOutputSchema);
 
   const [content, setContent] = useState("");
   const [temperature, setTemperature] = useState(0.7);
@@ -107,7 +111,29 @@ export function Composer() {
           />
           <span>logprobs</span>
         </label>
+        <label>
+          <span>format</span>
+          <select
+            value={outputFormat}
+            onChange={(e) =>
+              setOutputFormat(e.target.value as "none" | "json" | "schema")
+            }
+          >
+            <option value="none">none</option>
+            <option value="json">JSON</option>
+            <option value="schema">schema</option>
+          </select>
+        </label>
       </div>
+      {outputFormat === "schema" && (
+        <textarea
+          className="schema-editor"
+          value={outputSchema}
+          onChange={(e) => setOutputSchema(e.target.value)}
+          placeholder='{"type": "object", "properties": { ... }}'
+          rows={3}
+        />
+      )}
 
       <div className="composer-editor" onKeyDown={onKeyDown}>
         <CodeMirror
