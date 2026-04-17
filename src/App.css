@@ -1958,10 +1958,19 @@ button.danger:hover:not(:disabled) {
 .composer-editor {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 0.2rem 0.8rem;
+  border-radius: 10px;
+  padding: 4px 12px;
   max-height: 40vh;
   overflow-y: auto;
+}
+
+/* Override CodeMirror's built-in theme colors */
+.composer-editor .cm-editor {
+  background: transparent !important;
+}
+
+.composer-editor .cm-scroller {
+  font-family: inherit;
 }
 
 .composer-actions {

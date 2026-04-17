@@ -7,16 +7,20 @@ import { useMemo, useState } from "react";
 import { buildContextMessages } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 
-const extensions = [
-  markdown(),
-  EditorView.lineWrapping,
-  EditorView.theme({
-    "&": { backgroundColor: "transparent", fontSize: "15px" },
-    ".cm-content": { padding: "8px 0" },
-    ".cm-focused": { outline: "none" },
-    ".cm-gutters": { display: "none" },
-  }),
-];
+const cmTheme = EditorView.theme({
+  "&": { backgroundColor: "transparent", fontSize: "15px" },
+  ".cm-content": { padding: "8px 0", caretColor: "var(--accent)" },
+  ".cm-focused": { outline: "none" },
+  ".cm-gutters": { display: "none" },
+  ".cm-cursor": { borderLeftColor: "var(--accent)" },
+  ".cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.2) !important" },
+  ".cm-activeLine": { backgroundColor: "transparent" },
+  ".cm-line": { color: "var(--fg)" },
+  "&.cm-focused .cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.25) !important" },
+  ".cm-placeholder": { color: "var(--dim)" },
+});
+
+const extensions = [markdown(), EditorView.lineWrapping, cmTheme];
 
 export function Composer() {
   const streaming = useLoom((s) => s.streaming);
@@ -55,9 +59,14 @@ export function Composer() {
       EditorView.lineWrapping,
       EditorView.theme({
         "&": { backgroundColor: "transparent", fontSize: "13px" },
-        ".cm-content": { padding: "4px 0" },
+        ".cm-content": { padding: "4px 0", caretColor: "var(--accent)" },
         ".cm-focused": { outline: "none" },
-        ".cm-gutters": { display: "none" },
+        ".cm-gutters": { backgroundColor: "transparent", color: "var(--dim)", borderRight: "none" },
+        ".cm-cursor": { borderLeftColor: "var(--accent)" },
+        ".cm-selectionBackground": { backgroundColor: "rgba(100,150,255,0.2) !important" },
+        ".cm-activeLine": { backgroundColor: "rgba(100,150,255,0.06)" },
+        ".cm-line": { color: "var(--fg)" },
+        ".cm-placeholder": { color: "var(--dim)" },
       }),
     ],
     [],
@@ -148,7 +157,7 @@ export function Composer() {
                 }
               }}
               extensions={jsonExtensions}
-              theme="dark"
+              theme="none"
               placeholder="edit the outbound JSON request..."
               basicSetup={{
                 lineNumbers: true,
