@@ -296,7 +296,6 @@ export const useLoom = create<LoomStore>((set, get) => ({
       set({ sendError: { message: String(e) } });
     } finally {
       set({ streaming: false, streamingContent: "", streamingStartedAt: null });
-      await get().refresh();
     }
   },
 
@@ -335,7 +334,6 @@ export const useLoom = create<LoomStore>((set, get) => ({
     try {
       const afterFork = await branchForkFromEdit(current.session.id, turnId, newContent);
       set({ current: afterFork, sendError: null });
-      await get().refresh();
       if (opts.regenerate) {
         await streamAssistantReply(afterFork, opts.options ?? {}, set, get);
       }
@@ -395,7 +393,6 @@ export const useLoom = create<LoomStore>((set, get) => ({
         fullContent,
       );
       set({ current: afterFork, sendError: null });
-      await get().refresh();
     } catch (e) {
       set({ sendError: { message: String(e) } });
     } finally {
@@ -751,7 +748,6 @@ async function streamAssistantReply(
     set({ sendError: { message: String(e) } });
   } finally {
     set({ streaming: false, streamingContent: "", streamingStartedAt: null });
-    await get().refresh();
   }
 }
 
