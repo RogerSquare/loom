@@ -3,6 +3,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { findSiblings, type Turn } from "../lib/ipc";
 import { useLoom } from "../lib/store";
 import { LogprobsBody } from "./LogprobsBody";
+import { MarkdownBody } from "./MarkdownBody";
 import { RerunPopover } from "./RerunPopover";
 
 interface Props {
@@ -183,6 +184,8 @@ export const TurnCard = memo(function TurnCard({
       {/* ── Body ── */}
       {displayed.logprobs && displayed.logprobs.length > 0 ? (
         <LogprobsBody logprobs={displayed.logprobs} />
+      ) : displayed.role === "assistant" && displayed.content && !streaming ? (
+        <MarkdownBody content={displayed.content} />
       ) : (
         <pre className="turn-body">
           {displayed.content || (streaming ? "\u258D" : "")}
